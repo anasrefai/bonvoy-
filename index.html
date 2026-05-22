@@ -16,7 +16,7 @@
 <body>
 
 <!-- ═══ COOKIE LOADING SCREEN ════════════════════════════════════ -->
-<div id="cookie-loader" aria-hidden="true" role="presentation">
+<div id="cookie-loader" aria-hidden="true">
   <!-- Rocket: bottom-left, same SVG + floating animation as hero -->
   <div class="loader-rocket">
     <svg width="80" height="110" viewBox="0 0 80 110" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
@@ -31,70 +31,36 @@
     </svg>
   </div>
   <!-- Stars injected by script below using same .star-deco class as hero -->
-  <!-- Cookie display: single frame + two halves for split -->
+  <!-- Two video elements playing the same WebM; left clips left half, right clips right half -->
   <div id="cookie-display">
-    <img id="cookie-frame" src="assets/cookie-webp/frame_001.webp" alt="" draggable="false">
-    <div id="cookie-left"><img id="cookie-left-img" src="" alt="" draggable="false"></div>
-    <div id="cookie-right"><img id="cookie-right-img" src="" alt="" draggable="false"></div>
+    <div id="cookie-left">
+      <video id="vid-left" src="assets/cookie.webm" muted playsinline preload="auto"></video>
+    </div>
+    <div id="cookie-right">
+      <video id="vid-right" src="assets/cookie.webm" muted playsinline preload="auto"></video>
+    </div>
   </div>
 </div>
 <script>
 (function () {
-  // Lock scroll while loader is visible
   document.body.style.overflow = 'hidden';
 
-  var loader  = document.getElementById('cookie-loader');
-  var frameEl = document.getElementById('cookie-frame');
-  var leftDiv = document.getElementById('cookie-left');
-  var rightDiv= document.getElementById('cookie-right');
-  var leftImg = document.getElementById('cookie-left-img');
-  var rightImg= document.getElementById('cookie-right-img');
+  var loader   = document.getElementById('cookie-loader');
+  var leftDiv  = document.getElementById('cookie-left');
+  var rightDiv = document.getElementById('cookie-right');
+  var vidLeft  = document.getElementById('vid-left');
+  var vidRight = document.getElementById('vid-right');
 
-  var TOTAL        = 50;
-  var MS_PER_FRAME = 1000 / 12; // 12 fps ≈ 83ms
-  var frames       = [];
-  var loaded       = 0;
-
-  function pad(n) { return ('00' + n).slice(-3); }
-  function src(n)  { return 'assets/cookie-webp/frame_' + pad(n) + '.webp'; }
-
-  // Scatter stars using the same .star-deco class and twinkle animation as the hero
-  var starData = [
-    { ch: '✦', left: '12%', top:  '8%', size: 18, dur: 2.1, delay: 0.0 },
-    { ch: '✧', left: '78%', top: '14%', size: 13, dur: 1.7, delay: 0.5 },
-    { ch: '★', left: '55%', top: '20%', size: 22, dur: 2.5, delay: 1.1 },
-    { ch: '✦', left: '88%', top: '50%', size: 14, dur: 1.9, delay: 0.3 },
-    { ch: '✧', left: '22%', top: '72%', size: 16, dur: 2.3, delay: 0.8 },
-    { ch: '★', left: '65%', top: '82%', size: 12, dur: 1.6, delay: 1.4 },
-    { ch: '✦', left: '40%', top: '90%', size: 19, dur: 2.0, delay: 0.6 },
-  ];
-  starData.forEach(function (d) {
-    var s = document.createElement('span');
-    s.className = 'star-deco';
-    s.textContent = d.ch;
-    s.style.cssText = 'left:' + d.left + ';top:' + d.top + ';color:#D4622A;font-size:' + d.size + 'px;opacity:0.5;--twinkle-dur:' + d.dur + 's;--twinkle-delay:' + d.delay + 's;';
-    loader.appendChild(s);
-  });
+  // Safety fallback
+  var fallback = setTimeout(removeLoader, 10000);
 
   function removeLoader() {
+    clearTimeout(fallback);
     document.body.style.overflow = '';
     if (loader && loader.parentNode) loader.parentNode.removeChild(loader);
   }
 
-  // Safety fallback: remove loader if images never finish loading
-  var fallback = setTimeout(removeLoader, 9000);
-
   function doSplit() {
-    var lastSrc = src(TOTAL);
-    leftImg.src  = lastSrc;
-    rightImg.src = lastSrc;
-    frameEl.style.display = 'none';
-    leftDiv.style.display  = 'block';
-    rightDiv.style.display = 'block';
-
-    // Force layout before starting transitions
-    leftDiv.getBoundingClientRect();
-
     requestAnimationFrame(function () {
       requestAnimationFrame(function () {
         loader.style.transition   = 'opacity 0.6s ease-in';
@@ -108,49 +74,43 @@
     });
   }
 
-  function startAnim() {
-    // 2-second hold on frame_001 before crack plays
-    setTimeout(function () {
-      // frames[0] = frame_001 (already visible via HTML src)
-      // animation advances from frames[1] = frame_002 onward
-      var current  = 0;
-      var lastTime = 0;
-
-      function tick(ts) {
-        if (!lastTime) lastTime = ts;
-        if (ts - lastTime >= MS_PER_FRAME) {
-          lastTime = ts;
-          current++;
-          if (current < TOTAL) {
-            frameEl.src = frames[current].src;
-          } else {
-            doSplit();
-            return;
-          }
-        }
-        requestAnimationFrame(tick);
-      }
-      requestAnimationFrame(tick);
-    }, 2000);
+  // Wait for both videos to be ready, hold 2s, then play together
+  var readyCount = 0;
+  function onReady() {
+    readyCount++;
+    if (readyCount === 2) {
+      setTimeout(function () {
+        vidLeft.play();
+        vidRight.play();
+      }, 2000);
+    }
   }
 
-  // Populate frames array first so order is guaranteed before any onload fires
-  for (var i = 0; i < TOTAL; i++) {
-    frames.push(new Image());
-  }
-  // Attach handlers then set src
-  for (var j = 0; j < TOTAL; j++) {
-    (function (idx) {
-      frames[idx].onload = frames[idx].onerror = function () {
-        loaded++;
-        if (loaded >= TOTAL) {
-          clearTimeout(fallback);
-          startAnim();
-        }
-      };
-      frames[idx].src = src(idx + 1);
-    })(j);
-  }
+  vidLeft.addEventListener('canplaythrough', onReady, { once: true });
+  vidRight.addEventListener('canplaythrough', onReady, { once: true });
+  vidLeft.addEventListener('ended', doSplit, { once: true });
+
+  // Inject stars using the same .star-deco class and twinkle animation as the hero
+  var starData = [
+    { ch: '✦', left:  '8%', top: '10%', size: 16, dur: 2.1, delay: 0.0 },
+    { ch: '✧', left: '80%', top:  '8%', size: 12, dur: 1.8, delay: 0.4 },
+    { ch: '★', left: '55%', top: '18%', size: 20, dur: 2.4, delay: 1.0 },
+    { ch: '✦', left: '90%', top: '45%', size: 14, dur: 1.9, delay: 0.7 },
+    { ch: '✧', left: '15%', top: '65%', size: 17, dur: 2.2, delay: 0.3 },
+    { ch: '★', left: '68%', top: '78%', size: 11, dur: 1.6, delay: 1.2 },
+    { ch: '✦', left: '38%', top: '88%', size: 18, dur: 2.0, delay: 0.9 },
+    { ch: '✧', left: '25%', top: '30%', size: 13, dur: 1.7, delay: 0.5 },
+    { ch: '★', left: '72%', top: '55%', size: 15, dur: 2.3, delay: 1.5 },
+  ];
+  starData.forEach(function (d) {
+    var s = document.createElement('span');
+    s.className = 'star-deco';
+    s.textContent = d.ch;
+    s.style.cssText = 'position:absolute;left:' + d.left + ';top:' + d.top +
+      ';color:#D4622A;font-size:' + d.size + 'px;opacity:0.5;' +
+      '--twinkle-dur:' + d.dur + 's;--twinkle-delay:' + d.delay + 's;';
+    loader.appendChild(s);
+  });
 })();
 </script>
 

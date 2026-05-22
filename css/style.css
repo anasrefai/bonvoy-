@@ -479,11 +479,11 @@ p  { font-size: 1rem; }
 /* ─── Cookie Loading Screen ──────────────────────────────────── */
 #cookie-loader {
   position: fixed; inset: 0;
-  background: #F5EFE0;          /* cream — matches site background */
+  background: #F5EFE0;
   z-index: 9999;
   display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
 }
-/* Rocket in bottom-left corner of loader, same float animation as hero */
 .loader-rocket {
   position: absolute; bottom: 5%; left: 4%;
   animation: rocket-float 3s ease-in-out infinite;
@@ -491,37 +491,17 @@ p  { font-size: 1rem; }
 }
 #cookie-display {
   position: relative;
-  width: 400px;
-  height: 360px;
-}
-#cookie-frame {
-  position: absolute; top: 0; left: 0;
   width: 400px; height: 360px;
-  object-fit: cover;
-  display: block;
-  user-select: none;
-  mix-blend-mode: multiply;     /* makes black bg pixels transparent on cream */
+  display: flex;
 }
 #cookie-left,
 #cookie-right {
-  position: absolute; top: 0;
   width: 200px; height: 360px;
   overflow: hidden;
-  display: none;
+  flex-shrink: 0;
 }
-#cookie-left  { left: 0; }
-#cookie-right { left: 200px; }
-#cookie-left img,
-#cookie-right img {
-  position: absolute; top: 0;
-  width: 400px; height: 360px;
-  object-fit: cover;
-  display: block;
-  user-select: none;
-  mix-blend-mode: multiply;
-}
-#cookie-left img  { left: 0; }
-#cookie-right img { left: -200px; }
+#cookie-left video  { width: 400px; height: 360px; display: block; }
+#cookie-right video { width: 400px; height: 360px; display: block; margin-left: -200px; }
 @media (max-width: 500px) {
   #cookie-display { transform: scale(0.72); transform-origin: center center; }
 }
