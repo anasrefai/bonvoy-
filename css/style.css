@@ -490,20 +490,31 @@ p  { font-size: 1rem; }
   pointer-events: none;
 }
 #cookie-display {
-  position: relative;
-  width: 400px; height: 360px;
+  width: 100vw;
+  height: 100vh;
   display: flex;
+  align-items: center;
+  justify-content: center;
 }
 #cookie-left,
 #cookie-right {
-  width: 200px; height: 360px;
+  width: 50vw;
+  height: 100vh;
   overflow: hidden;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
 }
-#cookie-left video  { width: 400px; height: 360px; display: block; }
-#cookie-right video { width: 400px; height: 360px; display: block; margin-left: -200px; }
-@media (max-width: 500px) {
-  #cookie-display { transform: scale(0.72); transform-origin: center center; }
+#cookie-left video {
+  width: 100vw;
+  height: auto;
+  display: block;
+}
+#cookie-right video {
+  width: 100vw;
+  height: auto;
+  display: block;
+  margin-left: -50vw;
 }
 
 /* ─── Responsive — 767px (tablet/mobile base) ────────────────── */
