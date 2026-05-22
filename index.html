@@ -34,13 +34,13 @@
   <!-- Two video elements playing the same WebM; left clips left half, right clips right half -->
   <div id="cookie-display">
     <div id="cookie-left">
-      <video id="vid-left" muted playsinline preload="auto">
+      <video id="vid-left" autoplay muted playsinline preload="auto">
         <source src="assets/cookie.mov" type="video/mp4">
         <source src="assets/cookie.webm" type="video/webm">
       </video>
     </div>
     <div id="cookie-right">
-      <video id="vid-right" muted playsinline preload="auto">
+      <video id="vid-right" autoplay muted playsinline preload="auto">
         <source src="assets/cookie.mov" type="video/mp4">
         <source src="assets/cookie.webm" type="video/webm">
       </video>
@@ -56,6 +56,8 @@
   var rightDiv = document.getElementById('cookie-right');
   var vidLeft  = document.getElementById('vid-left');
   var vidRight = document.getElementById('vid-right');
+  vidLeft.load();
+  vidRight.load();
 
   // Desktop: skip cookie animation, show simple branded loader instead
   if (window.innerWidth > 768) {
