@@ -34,10 +34,10 @@
   <!-- Two video elements playing the same WebM; left clips left half, right clips right half -->
   <div id="cookie-display">
     <div id="cookie-left">
-      <video id="vid-left" src="assets/cookie.webm" muted playsinline preload="auto"></video>
+      <video id="vid-left" src="assets/cookie.webm" autoplay muted playsinline preload="auto"></video>
     </div>
     <div id="cookie-right">
-      <video id="vid-right" src="assets/cookie.webm" muted playsinline preload="auto"></video>
+      <video id="vid-right" src="assets/cookie.webm" autoplay muted playsinline preload="auto"></video>
     </div>
   </div>
 </div>
@@ -59,7 +59,7 @@
   }
 
   // Safety fallback
-  var fallback = setTimeout(removeLoader, 10000);
+  var fallback = setTimeout(removeLoader, 6000);
 
   function removeLoader() {
     clearTimeout(fallback);
@@ -96,8 +96,10 @@
         setTimeout(function () {
           vidLeft.playbackRate  = 1.75;
           vidRight.playbackRate = 1.75;
-          vidLeft.play();
-          vidRight.play();
+          var p1 = vidLeft.play();
+          var p2 = vidRight.play();
+          if (p1 && p1.catch) p1.catch(function(){});
+          if (p2 && p2.catch) p2.catch(function(){});
         }, 1000);
       });
     }
