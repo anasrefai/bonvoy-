@@ -31,19 +31,12 @@
     </svg>
   </div>
   <!-- Stars injected by script below using same .star-deco class as hero -->
-  <!-- Two video elements playing the same WebM; left clips left half, right clips right half -->
   <div id="cookie-display">
     <div id="cookie-left">
-      <video id="vid-left" autoplay muted playsinline preload="auto">
-        <source src="assets/cookie.hevc" type="video/mp4; codecs=hvc1">
-        <source src="assets/cookie.webm" type="video/webm">
-      </video>
+      <img id="vid-left" src="assets/cookie.apng" style="width:100vw;height:100vw;display:block;">
     </div>
     <div id="cookie-right">
-      <video id="vid-right" autoplay muted playsinline preload="auto">
-        <source src="assets/cookie.hevc" type="video/mp4; codecs=hvc1">
-        <source src="assets/cookie.webm" type="video/webm">
-      </video>
+      <img id="vid-right" src="assets/cookie.apng" style="width:100vw;height:100vw;display:block;margin-left:-50vw;">
     </div>
   </div>
 </div>
@@ -56,8 +49,6 @@
   var rightDiv = document.getElementById('cookie-right');
   var vidLeft  = document.getElementById('vid-left');
   var vidRight = document.getElementById('vid-right');
-  vidLeft.load();
-  vidRight.load();
 
   // Desktop: skip cookie animation, show simple branded loader instead
   if (window.innerWidth > 768) {
@@ -89,33 +80,18 @@
     });
   }
 
-  // Wait for both canplaythrough events, force first-frame decode, then play
   var readyCount = 0;
   function onReady() {
     readyCount++;
     if (readyCount === 2) {
-      // Seek both to 0 to force the browser to decode and paint the first frame
-      var seekedLeft  = new Promise(function (resolve) { vidLeft.addEventListener('seeked',  resolve, { once: true }); });
-      var seekedRight = new Promise(function (resolve) { vidRight.addEventListener('seeked', resolve, { once: true }); });
-      vidLeft.currentTime  = 0;
-      vidRight.currentTime = 0;
-
-      Promise.all([seekedLeft, seekedRight]).then(function () {
-        setTimeout(function () {
-          vidLeft.playbackRate  = 1.75;
-          vidRight.playbackRate = 1.75;
-          var p1 = vidLeft.play();
-          var p2 = vidRight.play();
-          if (p1 && p1.catch) p1.catch(function(){});
-          if (p2 && p2.catch) p2.catch(function(){});
-        }, 1000);
-      });
+      // APNG auto-plays on load; wait 1s then trigger split after animation duration (4170ms)
+      setTimeout(function () {
+        setTimeout(doSplit, 4170);
+      }, 1000);
     }
   }
-
-  vidLeft.addEventListener('canplaythrough', onReady, { once: true });
-  vidRight.addEventListener('canplaythrough', onReady, { once: true });
-  vidLeft.addEventListener('ended', doSplit, { once: true });
+  vidLeft.onload  = onReady;
+  vidRight.onload = onReady;
 
   // Inject stars using the same .star-deco class and twinkle animation as the hero
   var starData = [
