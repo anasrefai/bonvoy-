@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 48" width="180" height="48" role="img" aria-label="BonVoy">
+  <!-- Rocket icon -->
+  <g transform="translate(4, 6)">
+    <path d="M18 2 C18 2 28 4 28 14 L28 24 L22 30 L16 30 L10 24 L10 14 C10 4 18 2 18 2Z"
+          fill="none" stroke="#D4622A" stroke-width="2" stroke-linejoin="round"/>
+    <circle cx="18" cy="14" r="3.5" fill="#D4622A"/>
+    <path d="M10 22 L6 28 L10 26Z" fill="#D4622A"/>
+    <path d="M26 22 L30 28 L26 26Z" fill="#D4622A"/>
+    <path d="M14 28 L13 34 L18 31 L23 34 L22 28" fill="#E8891A" opacity="0.7"/>
+  </g>
+  <!-- BonVoy wordmark -->
+  <text x="42" y="32" font-family="Poppins, sans-serif" font-size="26" font-weight="700"
+        fill="#D4622A" letter-spacing="-0.5">BonVoy</text>
+</svg>

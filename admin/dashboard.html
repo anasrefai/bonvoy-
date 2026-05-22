@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — BonVoy Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="../css/style.css">
+  <link rel="stylesheet" href="../css/admin.css">
+</head>
+<body>
+
+<div class="admin-layout">
+
+  <!-- ═══ SIDEBAR ════════════════════════════════════════════════ -->
+  <aside class="admin-sidebar">
+    <div class="sidebar-logo">
+      <img src="../assets/logo.svg" alt="BonVoy" width="120" height="32">
+    </div>
+    <nav class="sidebar-nav">
+      <ul>
+        <li class="nav-item active" data-tab="orders">
+          <span class="nav-icon">📦</span> Orders
+          <span class="nav-badge" id="orders-unread-badge">0</span>
+        </li>
+        <li class="nav-item" data-tab="products">
+          <span class="nav-icon">🎂</span> Products
+        </li>
+        <li class="nav-item" data-tab="settings">
+          <span class="nav-icon">⚙️</span> Settings
+        </li>
+      </ul>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="admin-email" id="sidebar-email">—</div>
+      <button class="btn-logout" id="btn-logout">Logout</button>
+    </div>
+  </aside>
+
+  <!-- ═══ MAIN ════════════════════════════════════════════════════ -->
+  <main class="admin-main">
+    <header class="admin-topbar">
+      <span class="topbar-title">Admin Panel</span>
+      <span class="topbar-admin" id="topbar-email">—</span>
+    </header>
+
+    <!-- ── ORDERS TAB ──────────────────────────────────────────── -->
+    <div class="tab-panel active" id="tab-orders">
+      <div class="stats-grid">
+        <div class="stat-card">
+          <div class="stat-label">Orders Today</div>
+          <div class="stat-value" id="stat-today">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Pending</div>
+          <div class="stat-value" id="stat-pending">—</div>
+          <div class="stat-sub" id="stat-pending-sub"></div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Revenue Today</div>
+          <div class="stat-value" id="stat-revenue-today">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">All-time Revenue</div>
+          <div class="stat-value" id="stat-revenue-all">—</div>
+        </div>
+      </div>
+
+      <div class="filters-bar">
+        <input type="text" class="filter-input" id="search-orders" placeholder="Search name or phone…">
+        <select class="filter-select" id="filter-status">
+          <option value="">All statuses</option>
+          <option value="pending">Pending</option>
+          <option value="confirmed">Confirmed</option>
+          <option value="delivered">Delivered</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+        <select class="filter-select" id="filter-city">
+          <option value="">All cities</option>
+          <option>Amman</option><option>Salt</option><option>Zarqa</option>
+          <option>Jerash</option><option>Irbid</option><option>Madaba</option><option>Balqaa</option>
+        </select>
+        <input type="date" class="filter-select" id="filter-date-from" title="From date">
+        <input type="date" class="filter-select" id="filter-date-to"   title="To date">
+      </div>
+
+      <div class="table-wrap">
+        <table id="orders-table">
+          <thead>
+            <tr>
+              <th>#</th><th>Customer</th><th>Phone</th><th>City</th>
+              <th>Items</th><th>Total</th><th>Date</th><th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="orders-tbody">
+            <tr><td colspan="8" style="text-align:center;padding:24px;opacity:0.5">Loading orders…</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <button class="load-more-btn" id="load-more-btn" style="display:none">Load more</button>
+    </div>
+
+    <!-- ── PRODUCTS TAB ────────────────────────────────────────── -->
+    <div class="tab-panel" id="tab-products">
+      <div class="admin-products-header">
+        <h2 style="font-size:1.1rem;color:#3D2010">Products</h2>
+        <button class="btn btn-primary" id="btn-add-product" style="padding:9px 20px;font-size:0.875rem">+ Add Product</button>
+      </div>
+      <div class="admin-product-grid" id="admin-product-grid">
+        <p style="grid-column:1/-1;opacity:0.5;text-align:center;padding:24px">Loading products…</p>
+      </div>
+    </div>
+
+    <!-- ── SETTINGS TAB ────────────────────────────────────────── -->
+    <div class="tab-panel" id="tab-settings">
+      <div class="settings-card">
+        <h3>Delivery Fees (JOD)</h3>
+        <table class="fees-table">
+          <thead><tr><th>City</th><th>Fee (JOD)</th></tr></thead>
+          <tbody id="fees-tbody"></tbody>
+        </table>
+        <button class="btn-save-fees" id="btn-save-fees">Save Fees</button>
+      </div>
+
+      <div class="settings-card">
+        <h3>Store Status</h3>
+        <div class="store-toggle-row">
+          <div>
+            <div class="store-toggle-label">Store Open</div>
+            <div class="store-toggle-sub">Customers see "closed" banner when off</div>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="toggle-store-open" checked>
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+        <button class="btn-save-fees" id="btn-save-store" style="margin-top:16px">Save Store Status</button>
+      </div>
+
+      <div class="settings-card">
+        <h3>Admin Password</h3>
+        <p style="font-size:0.875rem;opacity:0.7;margin-bottom:12px">Change your password in the Firebase console (Authentication → Users).</p>
+        <a href="https://console.firebase.google.com" target="_blank" rel="noopener"
+           style="display:inline-block;padding:9px 20px;border-radius:999px;background:rgba(212,98,42,0.1);color:#D4622A;font-weight:600;font-size:0.875rem">
+          Open Firebase Console ↗
+        </a>
+      </div>
+    </div>
+  </main>
+
+  <!-- Bottom Nav (mobile) -->
+  <nav class="admin-bottom-nav">
+    <div class="bottom-nav-inner">
+      <div class="bottom-nav-item active" data-tab="orders">
+        <span class="bottom-nav-icon">📦</span>Orders
+      </div>
+      <div class="bottom-nav-item" data-tab="products">
+        <span class="bottom-nav-icon">🎂</span>Products
+      </div>
+      <div class="bottom-nav-item" data-tab="settings">
+        <span class="bottom-nav-icon">⚙️</span>Settings
+      </div>
+    </div>
+  </nav>
+</div>
+
+<!-- ═══ ORDER DETAIL MODAL ══════════════════════════════════════ -->
+<div class="modal-overlay" id="order-modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2>Order Details</h2>
+      <button class="modal-close" id="order-modal-close">✕</button>
+    </div>
+    <div id="order-detail-body"></div>
+  </div>
+</div>
+
+<!-- ═══ PRODUCT MODAL ═══════════════════════════════════════════ -->
+<div class="modal-overlay" id="product-modal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h2 id="product-modal-title">Add Product</h2>
+      <button class="modal-close" id="product-modal-close">✕</button>
+    </div>
+    <form class="admin-form" id="product-form" novalidate>
+      <input type="hidden" id="edit-product-id">
+      <div class="form-group">
+        <label>Name</label>
+        <input type="text" id="p-name" maxlength="80" placeholder="Product name" required>
+      </div>
+      <div class="form-group">
+        <label>Category</label>
+        <select id="p-category" required>
+          <option value="">— Select —</option>
+          <option value="Brownies">Brownies</option>
+          <option value="Cakes">Cakes</option>
+          <option value="Cookies">Cookies</option>
+          <option value="Specials">Specials</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea id="p-desc" maxlength="300" placeholder="Short description…" required></textarea>
+      </div>
+      <div class="form-group">
+        <label>Price (JOD)</label>
+        <input type="number" id="p-price" min="0.01" max="999.99" step="0.01" placeholder="0.00" required>
+      </div>
+      <div class="form-group">
+        <label>Product Image</label>
+        <input type="file" id="p-image" accept="image/*">
+        <div class="img-preview-wrap">
+          <img class="img-preview" id="p-image-preview" src="" alt="Preview">
+        </div>
+        <div class="upload-progress" id="upload-progress">
+          <div class="upload-progress-bar" id="upload-progress-bar"></div>
+        </div>
+      </div>
+      <div class="form-group" style="display:flex;align-items:center;gap:10px">
+        <label class="toggle-switch" style="margin:0">
+          <input type="checkbox" id="p-available" checked>
+          <span class="toggle-slider"></span>
+        </label>
+        <span style="font-weight:600;font-size:0.875rem">Available</span>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn-cancel" id="product-cancel-btn">Cancel</button>
+        <button type="submit" class="btn-save" id="product-save-btn">Save Product</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<!-- Firebase -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js"></script>
+<script src="../js/firebase-config.js"></script>
+<script src="../js/admin.js"></script>
+</body>
+</html>

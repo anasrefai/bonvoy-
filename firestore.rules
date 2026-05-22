@@ -1,0 +1,32 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /products/{id} {
+      allow read: if resource.data.available == true;
+      allow write: if false;
+    }
+
+    match /orders/{id} {
+      // Authenticated admins can read for onSnapshot real-time updates.
+      // Writes only via Admin SDK through Netlify Functions.
+      allow read: if request.auth != null
+                  && request.auth.token.email in
+                     ['YOUR_ADMIN_EMAIL_HERE'];
+      allow write: if false;
+    }
+
+    match /settings/{doc} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /rate_limits/{id} {
+      allow read, write: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

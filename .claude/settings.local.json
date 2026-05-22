@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Get-ChildItem -Recurse \"C:\\\\Users\\\\anasr\\\\OneDrive\\\\Desktop\\\\bonvoy\" | Where-Object { !$_.PSIsContainer } | Select-Object FullName | Sort-Object FullName)"
+    ]
+  }
+}

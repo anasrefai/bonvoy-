@@ -1,0 +1,12 @@
+{
+  "name": "bonvoy",
+  "version": "1.0.0",
+  "description": "BonVoy cake & dessert delivery — Netlify Functions",
+  "private": true,
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

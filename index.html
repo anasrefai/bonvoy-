@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BonVoy — Cakes & Sweets Delivered in Jordan</title>
+  <meta name="description" content="Order fresh cakes, brownies, and desserts online. Same-day delivery across Amman and all Jordan. BonVoy — joy delivered.">
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- Store closed banner (shown when isOpen == false in Firestore) -->
+<div class="store-closed-banner" id="store-closed-banner">
+  We're currently closed. Orders open Saturday–Thursday, 11:00am–5:00pm.
+</div>
+
+<!-- ═══ NAVBAR ═══════════════════════════════════════════════════ -->
+<nav class="navbar" id="navbar">
+  <div class="nav-inner">
+    <a href="#home" class="nav-logo">
+      <img src="assets/logo.svg" alt="BonVoy" width="140" height="38">
+    </a>
+    <ul class="nav-links">
+      <li><a href="#home" class="active">Home</a></li>
+      <li><a href="#menu">Menu</a></li>
+      <li><a href="#about">About</a></li>
+    </ul>
+    <div class="nav-actions">
+      <button class="cart-btn" id="cart-btn" aria-label="Open cart">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+          <line x1="3" y1="6" x2="21" y2="6"/>
+          <path d="M16 10a4 4 0 01-8 0"/>
+        </svg>
+        <span class="cart-badge" id="cart-badge">0</span>
+      </button>
+      <button class="hamburger" id="hamburger" aria-label="Open menu">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<!-- Mobile Menu -->
+<div class="mobile-menu" id="mobile-menu">
+  <ul>
+    <li><a href="#home" class="mob-link">Home</a></li>
+    <li><a href="#menu" class="mob-link">Menu</a></li>
+    <li><a href="#about" class="mob-link">About</a></li>
+  </ul>
+</div>
+
+<!-- ═══ HERO ══════════════════════════════════════════════════════ -->
+<section class="hero" id="home">
+  <div class="container">
+    <div class="hero-content">
+      <h1>Cakes &amp; Sweets,<br>Delivered to Your Door 🚀</h1>
+      <p>Same-day delivery · Amman &amp; all Jordan</p>
+      <div class="hero-cta">
+        <a href="#menu" class="btn btn-primary">Order Now</a>
+        <a href="#about" class="btn btn-outline">Our Story</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Space decorations -->
+  <div class="hero-deco" id="hero-deco">
+    <!-- Rocket -->
+    <div class="rocket-wrap">
+      <svg width="80" height="110" viewBox="0 0 80 110" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <path d="M40 8 C40 8 62 14 62 38 L62 68 L50 80 L30 80 L18 68 L18 38 C18 14 40 8 40 8Z"
+              stroke="#D4622A" stroke-width="2.5" fill="rgba(212,98,42,0.08)" stroke-linejoin="round"/>
+        <circle cx="40" cy="38" r="9" fill="none" stroke="#D4622A" stroke-width="2.5"/>
+        <circle cx="40" cy="38" r="4" fill="#D4622A"/>
+        <path d="M18 62 L8 74 L18 70Z" fill="#D4622A" opacity="0.7"/>
+        <path d="M62 62 L72 74 L62 70Z" fill="#D4622A" opacity="0.7"/>
+        <path d="M32 78 L30 96 L40 88 L50 96 L48 78" fill="#E8891A" opacity="0.6"/>
+        <ellipse cx="40" cy="92" rx="10" ry="5" fill="#E8891A" opacity="0.3"/>
+      </svg>
+    </div>
+    <!-- Planet -->
+    <div class="planet-wrap">
+      <svg width="90" height="60" viewBox="0 0 90 60" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <ellipse cx="45" cy="30" rx="20" ry="20" fill="rgba(212,98,42,0.12)" stroke="#D4622A" stroke-width="1.5"/>
+        <ellipse cx="45" cy="30" rx="42" ry="12" fill="none" stroke="#D4622A" stroke-width="1.5" stroke-dasharray="4 3"/>
+      </svg>
+    </div>
+    <!-- Stars inserted by JS -->
+  </div>
+</section>
+
+<!-- ═══ MENU ═══════════════════════════════════════════════════════ -->
+<section class="section" id="menu">
+  <div class="container">
+    <div class="section-header">
+      <h2>Our Menu</h2>
+      <p>Fresh-baked daily, delivered with love</p>
+    </div>
+
+    <!-- Category tabs -->
+    <div class="category-tabs" role="tablist">
+      <button class="tab-btn active" data-category="all" role="tab">All</button>
+      <button class="tab-btn" data-category="Brownies" role="tab">Brownies</button>
+      <button class="tab-btn" data-category="Cakes" role="tab">Cakes</button>
+      <button class="tab-btn" data-category="Cookies" role="tab">Cookies</button>
+      <button class="tab-btn" data-category="Specials" role="tab">Specials</button>
+    </div>
+
+    <!-- Product grid -->
+    <div class="product-grid" id="product-grid">
+      <!-- Skeleton cards shown while loading -->
+      <div class="skeleton-card">
+        <div class="skeleton-line skeleton-img"></div>
+        <div class="skeleton-body">
+          <div class="skeleton-line sm"></div>
+          <div class="skeleton-line md"></div>
+          <div class="skeleton-line lg"></div>
+          <div class="skeleton-line xl"></div>
+          <div class="skeleton-footer">
+            <div class="skeleton-price"></div>
+            <div class="skeleton-btn"></div>
+          </div>
+        </div>
+      </div>
+      <div class="skeleton-card">
+        <div class="skeleton-line skeleton-img"></div>
+        <div class="skeleton-body">
+          <div class="skeleton-line sm"></div>
+          <div class="skeleton-line md"></div>
+          <div class="skeleton-line lg"></div>
+          <div class="skeleton-line xl"></div>
+          <div class="skeleton-footer">
+            <div class="skeleton-price"></div>
+            <div class="skeleton-btn"></div>
+          </div>
+        </div>
+      </div>
+      <div class="skeleton-card">
+        <div class="skeleton-line skeleton-img"></div>
+        <div class="skeleton-body">
+          <div class="skeleton-line sm"></div>
+          <div class="skeleton-line md"></div>
+          <div class="skeleton-line lg"></div>
+          <div class="skeleton-line xl"></div>
+          <div class="skeleton-footer">
+            <div class="skeleton-price"></div>
+            <div class="skeleton-btn"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ ABOUT ══════════════════════════════════════════════════════ -->
+<section class="section about-section" id="about">
+  <div class="container">
+    <div class="about-inner">
+      <div class="about-text">
+        <h2>Our Story</h2>
+        <p>BonVoy was born in Amman with one simple belief: every celebration deserves something extraordinary. We bake fresh cakes, rich brownies, and indulgent cookies — crafted from premium ingredients, delivered to your door.</p>
+        <p>As a sister brand of <a href="https://www.instagram.com/cakeh.jo" target="_blank" rel="noopener">@cakeh.jo</a>, we bring 132K followers' worth of trust and passion into every order. Whether it's a birthday, a Tuesday, or just because — BonVoy delivers joy.</p>
+        <p>We currently serve Amman and ship across Jordan. Every order is handled with care from our kitchen in Alrabieh.</p>
+        <div class="about-details">
+          <div class="about-detail">
+            <span class="icon">🕐</span>
+            <span>Saturday–Thursday, 11:00am – 5:00pm</span>
+          </div>
+          <div class="about-detail">
+            <span class="icon">📍</span>
+            <span>Alrabieh, Amman, Jordan</span>
+          </div>
+          <div class="about-detail">
+            <span class="icon">📸</span>
+            <a href="https://www.instagram.com/bonvoy.jo" target="_blank" rel="noopener">@bonvoy.jo on Instagram</a>
+          </div>
+          <div class="about-detail">
+            <span class="icon">🚀</span>
+            <span>Delivery: Amman JOD 0.50 · All Jordan JOD 2.50</span>
+          </div>
+        </div>
+      </div>
+      <div class="about-visual">
+        <div class="about-rocket" aria-hidden="true">
+          <svg width="180" height="220" viewBox="0 0 80 110" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M40 8 C40 8 62 14 62 38 L62 68 L50 80 L30 80 L18 68 L18 38 C18 14 40 8 40 8Z"
+                  stroke="#D4622A" stroke-width="2" fill="rgba(212,98,42,0.1)" stroke-linejoin="round"/>
+            <circle cx="40" cy="38" r="9" fill="none" stroke="#D4622A" stroke-width="2"/>
+            <circle cx="40" cy="38" r="4" fill="#D4622A"/>
+            <path d="M18 62 L8 74 L18 70Z" fill="#D4622A" opacity="0.7"/>
+            <path d="M62 62 L72 74 L62 70Z" fill="#D4622A" opacity="0.7"/>
+            <path d="M32 78 L30 96 L40 88 L50 96 L48 78" fill="#E8891A" opacity="0.6"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ FOOTER ═════════════════════════════════════════════════════ -->
+<footer class="site-footer">
+  <p>&copy; 2026 BonVoy · <a href="https://www.instagram.com/bonvoy.jo" target="_blank" rel="noopener">@bonvoy.jo</a> · Alrabieh, Amman, Jordan</p>
+</footer>
+
+<!-- ═══ CART SIDEBAR ═══════════════════════════════════════════════ -->
+<div class="cart-overlay" id="cart-overlay"></div>
+<aside class="cart-sidebar" id="cart-sidebar" aria-label="Shopping cart">
+  <div class="cart-header">
+    <h2>Your Cart</h2>
+    <button class="cart-close" id="cart-close" aria-label="Close cart">✕</button>
+  </div>
+  <div class="cart-items" id="cart-items"></div>
+  <div class="cart-footer" id="cart-footer" style="display:none">
+    <div class="cart-summary">
+      <div class="summary-row">
+        <span>Subtotal</span>
+        <span id="cart-subtotal">JOD 0.00</span>
+      </div>
+      <div class="summary-row">
+        <span>Delivery fee</span>
+        <span id="cart-delivery">Select city</span>
+      </div>
+      <div class="summary-row total">
+        <span>Total</span>
+        <span id="cart-total">JOD 0.00</span>
+      </div>
+    </div>
+    <p class="summary-note">Delivery fee confirmed at checkout</p>
+    <button class="btn btn-primary btn-checkout" id="btn-checkout">Proceed to Order 🛒</button>
+  </div>
+</aside>
+
+<!-- ═══ ORDER MODAL ════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="order-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+  <div class="modal-card" id="modal-card">
+    <div class="modal-logo">
+      <img src="assets/logo.svg" alt="BonVoy" width="120" height="32">
+    </div>
+    <h2 class="modal-title" id="modal-title">Place Your Order</h2>
+
+    <form id="order-form" novalidate autocomplete="off">
+      <!-- Honeypot -->
+      <input type="text" name="_hp" id="hp-field" class="hp-field" autocomplete="off" tabindex="-1">
+
+      <div class="form-group">
+        <label for="f-name">Full Name</label>
+        <input type="text" id="f-name" name="name" placeholder="Your full name" maxlength="80" required>
+        <div class="field-error" id="err-name">Please enter your name (letters only, 2–80 chars)</div>
+      </div>
+
+      <div class="form-group">
+        <label for="f-phone">Phone Number</label>
+        <input type="tel" id="f-phone" name="phone" placeholder="07X-XXX-XXXX" required>
+        <div class="field-error" id="err-phone">Enter a valid Jordanian number (07X or +9627X)</div>
+      </div>
+
+      <div class="form-group">
+        <label for="f-city">City</label>
+        <select id="f-city" name="city" required>
+          <option value="">— Select your city —</option>
+          <option value="Amman">Amman</option>
+          <option value="Salt">Salt</option>
+          <option value="Zarqa">Zarqa</option>
+          <option value="Jerash">Jerash</option>
+          <option value="Irbid">Irbid</option>
+          <option value="Madaba">Madaba</option>
+          <option value="Balqaa">Balqaa</option>
+        </select>
+        <div class="field-error" id="err-city">Please select your city</div>
+      </div>
+
+      <!-- Smart location field -->
+      <div class="form-group">
+        <label>Delivery Address</label>
+        <div class="location-mode-wrapper" id="location-wrapper">
+          <!-- Mode A: GPS -->
+          <div class="location-mode" id="mode-gps">
+            <button type="button" class="btn-location" id="btn-detect">
+              📍 Detect My Location
+            </button>
+            <div class="location-confirmed" id="location-result" style="display:none">
+              <span class="pin-icon">📍</span>
+              <div>
+                <span class="detected-addr" id="detected-address"></span>
+                <span class="location-accuracy" id="location-accuracy"></span>
+              </div>
+            </div>
+            <button type="button" class="link-switch" id="switch-to-manual">
+              ✏️ Enter a different address instead
+            </button>
+          </div>
+          <!-- Mode B: Manual -->
+          <div class="location-mode" id="mode-manual" style="display:none">
+            <textarea id="address-manual" name="address" rows="3" maxlength="300"
+              placeholder="Street name, building, area…"></textarea>
+            <button type="button" class="link-switch" id="switch-to-gps">
+              📍 Use my current location instead
+            </button>
+          </div>
+        </div>
+        <div class="field-error" id="err-address">Please provide a delivery address</div>
+      </div>
+
+      <div class="form-group">
+        <label for="f-date">Preferred Delivery Date</label>
+        <input type="date" id="f-date" name="deliveryDate" required>
+        <div class="field-error" id="err-date">Select a valid date (today to 30 days out)</div>
+      </div>
+
+      <div class="form-group">
+        <label for="f-notes">Special Notes <span style="font-weight:400;opacity:0.6">(optional)</span></label>
+        <textarea id="f-notes" name="notes" rows="2" maxlength="500"
+          placeholder="Allergy notes, custom message, access instructions…"></textarea>
+      </div>
+
+      <!-- Live order summary -->
+      <div class="order-summary-box">
+        <h4>Order Summary</h4>
+        <div class="order-summary-items" id="modal-items-list"></div>
+        <hr class="order-summary-divider">
+        <div class="order-summary-row">
+          <span>Subtotal</span>
+          <span id="modal-subtotal">JOD 0.00</span>
+        </div>
+        <div class="order-summary-row">
+          <span>Delivery fee</span>
+          <span id="modal-delivery-fee">Select city</span>
+        </div>
+        <div class="order-summary-row bold">
+          <span>Total</span>
+          <span id="modal-total">JOD 0.00</span>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary" id="btn-place-order" style="width:100%;padding:14px;font-size:1.05rem">
+        Place Order 🚀
+      </button>
+    </form>
+  </div>
+</div>
+
+<!-- Firebase compat CDN -->
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js" defer></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js" defer></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js" defer></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js" defer></script>
+<script src="js/firebase-config.js" defer></script>
+<script src="js/main.js" defer></script>
+</body>
+</html>
