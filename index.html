@@ -81,15 +81,17 @@
     });
   }
 
-  // Wait for both videos to be ready, hold 2s, then play together
+  // Wait for both videos to be ready, hold 0.8s, then play at 1.75x speed
   var readyCount = 0;
   function onReady() {
     readyCount++;
     if (readyCount === 2) {
       setTimeout(function () {
+        vidLeft.playbackRate  = 1.75;
+        vidRight.playbackRate = 1.75;
         vidLeft.play();
         vidRight.play();
-      }, 2000);
+      }, 800);
     }
   }
 
