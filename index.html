@@ -34,10 +34,16 @@
   <!-- Two video elements playing the same WebM; left clips left half, right clips right half -->
   <div id="cookie-display">
     <div id="cookie-left">
-      <video id="vid-left" src="assets/cookie.webm" autoplay muted playsinline preload="auto"></video>
+      <video id="vid-left" muted playsinline preload="auto">
+        <source src="assets/cookie.mov" type="video/mp4">
+        <source src="assets/cookie.webm" type="video/webm">
+      </video>
     </div>
     <div id="cookie-right">
-      <video id="vid-right" src="assets/cookie.webm" autoplay muted playsinline preload="auto"></video>
+      <video id="vid-right" muted playsinline preload="auto">
+        <source src="assets/cookie.mov" type="video/mp4">
+        <source src="assets/cookie.webm" type="video/webm">
+      </video>
     </div>
   </div>
 </div>
