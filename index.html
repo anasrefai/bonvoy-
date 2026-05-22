@@ -15,6 +15,114 @@
 </head>
 <body>
 
+<!-- ═══ COOKIE LOADING SCREEN ════════════════════════════════════ -->
+<div id="cookie-loader" aria-hidden="true" role="presentation">
+  <div id="cookie-display">
+    <!-- Single frame shown during playback -->
+    <img id="cookie-frame" src="assets/cookie-webp/frame_001.webp" alt="" draggable="false">
+    <!-- Two halves shown only at split moment -->
+    <div id="cookie-left"><img id="cookie-left-img" src="" alt="" draggable="false"></div>
+    <div id="cookie-right"><img id="cookie-right-img" src="" alt="" draggable="false"></div>
+  </div>
+</div>
+<script>
+(function () {
+  var loader  = document.getElementById('cookie-loader');
+  var frameEl = document.getElementById('cookie-frame');
+  var leftDiv = document.getElementById('cookie-left');
+  var rightDiv= document.getElementById('cookie-right');
+  var leftImg = document.getElementById('cookie-left-img');
+  var rightImg= document.getElementById('cookie-right-img');
+
+  var TOTAL        = 50;
+  var MS_PER_FRAME = 1000 / 12; // 12 fps ≈ 83ms
+  var frames       = [];
+  var loaded       = 0;
+
+  function pad(n) { return ('00' + n).slice(-3); }
+  function src(n)  { return 'assets/cookie-webp/frame_' + pad(n) + '.webp'; }
+
+  function removeLoader() {
+    if (loader && loader.parentNode) loader.parentNode.removeChild(loader);
+  }
+
+  // Safety fallback: remove loader if images never load
+  var fallback = setTimeout(removeLoader, 7000);
+
+  function dismiss() {
+    clearTimeout(fallback);
+    loader.style.transition = 'opacity 0.6s ease';
+    loader.style.opacity = '0';
+    setTimeout(removeLoader, 650);
+  }
+
+  function doSplit() {
+    var lastSrc = src(TOTAL);
+    leftImg.src  = lastSrc;
+    rightImg.src = lastSrc;
+    frameEl.style.display = 'none';
+    leftDiv.style.display  = 'block';
+    rightDiv.style.display = 'block';
+
+    // Force layout before starting transitions
+    leftDiv.getBoundingClientRect();
+
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        loader.style.transition   = 'opacity 0.6s ease';
+        loader.style.opacity      = '0';
+        leftDiv.style.transition  = 'transform 0.6s ease-in';
+        leftDiv.style.transform   = 'translateX(-150vw)';
+        rightDiv.style.transition = 'transform 0.6s ease-in';
+        rightDiv.style.transform  = 'translateX(150vw)';
+        setTimeout(removeLoader, 700);
+      });
+    });
+  }
+
+  function startAnim() {
+    // frames[0] = frame_001 (already visible via HTML src)
+    // we update starting from frames[1] = frame_002
+    var current  = 0;
+    var lastTime = 0;
+
+    function tick(ts) {
+      if (!lastTime) lastTime = ts;
+      if (ts - lastTime >= MS_PER_FRAME) {
+        lastTime = ts;
+        current++;
+        if (current < TOTAL) {
+          frameEl.src = frames[current].src;
+        } else {
+          doSplit();
+          return;
+        }
+      }
+      requestAnimationFrame(tick);
+    }
+    requestAnimationFrame(tick);
+  }
+
+  // Populate frames array first so order is guaranteed
+  for (var i = 0; i < TOTAL; i++) {
+    frames.push(new Image());
+  }
+  // Then attach handlers and set src
+  for (var j = 0; j < TOTAL; j++) {
+    (function (idx) {
+      frames[idx].onload = frames[idx].onerror = function () {
+        loaded++;
+        if (loaded >= TOTAL) {
+          clearTimeout(fallback);
+          startAnim();
+        }
+      };
+      frames[idx].src = src(idx + 1);
+    })(j);
+  }
+})();
+</script>
+
 <!-- Store closed banner (shown when isOpen == false in Firestore) -->
 <div class="store-closed-banner" id="store-closed-banner">
   We're currently closed. Orders open Saturday–Thursday, 11:00am–5:00pm.
@@ -24,7 +132,7 @@
 <nav class="navbar" id="navbar">
   <div class="nav-inner">
     <a href="#home" class="nav-logo">
-      <img src="assets/logo.svg" alt="BonVoy" width="140" height="38">
+      <img src="assets/bonvoy-logo.jpg" alt="BonVoy" height="48" style="width:auto">
     </a>
     <ul class="nav-links">
       <li><a href="#home" class="active">Home</a></li>
@@ -240,7 +348,7 @@
 <div class="modal-overlay" id="order-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
   <div class="modal-card" id="modal-card">
     <div class="modal-logo">
-      <img src="assets/logo.svg" alt="BonVoy" width="120" height="32">
+      <img src="assets/bonvoy-logo.jpg" alt="BonVoy" height="36" style="width:auto">
     </div>
     <h2 class="modal-title" id="modal-title">Place Your Order</h2>
 
