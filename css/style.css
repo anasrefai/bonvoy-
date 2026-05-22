@@ -497,6 +497,7 @@ p  { font-size: 1rem; }
   justify-content: center;
   gap: 0;
   font-size: 0;
+  background: #F5EFE0;
 }
 #cookie-left,
 #cookie-right {
@@ -511,16 +512,19 @@ p  { font-size: 1rem; }
   border: none;
   outline: none;
 }
-#cookie-left video {
+#cookie-left video, #cookie-left img {
   width: 100vw;
-  height: auto;
+  height: 100vw;
   display: block;
 }
-#cookie-right video {
+#cookie-right video, #cookie-right img {
   width: 100vw;
-  height: auto;
+  height: 100vw;
   display: block;
   margin-left: -50vw;
+}
+#cookie-left img, #cookie-right img {
+  mix-blend-mode: multiply;
 }
 /* Simple desktop loader */
 #simple-loader {
@@ -546,8 +550,8 @@ p  { font-size: 1rem; }
 @media (max-width: 768px) {
   #cookie-display { width: 100vw; height: 100vw; }
   #cookie-left, #cookie-right { width: 50vw; height: 100vw; }
-  #cookie-left video  { width: 100vw; height: 100vw; margin-left: 0; }
-  #cookie-right video { width: 100vw; height: 100vw; margin-left: -50vw; }
+  #cookie-left video, #cookie-left img   { width: 100vw; height: 100vw; margin-left: 0; }
+  #cookie-right video, #cookie-right img { width: 100vw; height: 100vw; margin-left: -50vw; }
 }
 
 /* ─── Responsive — 767px (tablet/mobile base) ────────────────── */
