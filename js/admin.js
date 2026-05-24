@@ -109,7 +109,17 @@ async function fetchAndRenderOrders(replace = false) {
   const status  = document.getElementById('filter-status')?.value  || '';
   const city    = document.getElementById('filter-city')?.value    || '';
 
-  const payload = { status: status || undefined, city: city || undefined, search: search || undefined, limit: 20 };
+  const dateFrom = document.getElementById('filter-date-from')?.value || null;
+  const dateTo   = document.getElementById('filter-date-to')?.value   || null;
+
+  const payload = {
+    status:   status   || undefined,
+    city:     city     || undefined,
+    search:   search   || undefined,
+    dateFrom: dateFrom || undefined,
+    dateTo:   dateTo   || undefined,
+    limit: 20,
+  };
   if (!replace && ordersLastId) payload.startAfter = ordersLastId;
 
   try {
@@ -307,8 +317,7 @@ async function updateStats() {
    ═══════════════════════════════════════════════════════════════ */
 async function loadProductsTab() {
   try {
-    const snap = await db.collection('products').orderBy('createdAt','desc').get();
-    const products = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const { products } = await adminAction('getAdminProducts', {});
     renderAdminProducts(products);
   } catch (err) {
     document.getElementById('admin-product-grid').innerHTML =
@@ -546,7 +555,7 @@ async function saveStoreStatus() {
   btn.disabled = true; btn.textContent = 'Saving…';
   const isOpen = document.getElementById('toggle-store-open').checked;
   try {
-    await db.collection('settings').doc('store_info').set({ isOpen }, { merge: true });
+    await adminAction('saveStoreStatus', { isOpen });
     showToast('Store status saved', 'success');
   } catch (err) {
     showToast('Error: ' + err.message, 'error');

@@ -2,9 +2,9 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
     match /products/{filename} {
-      // Only authenticated admins can upload product images
       allow read: if true;
       allow write: if request.auth != null
+                   && request.auth.token.email == 'omar2008admin@bonvoyadmin.com'
                    && request.resource.size < 5 * 1024 * 1024
                    && request.resource.contentType.matches('image/.*');
     }

@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/style.css?v=4">
-  <link rel="stylesheet" href="../css/admin.css?v=2">
+  <link rel="stylesheet" href="../css/admin.css?v=3">
 </head>
 <body>
 
@@ -42,9 +42,16 @@
   <!-- ═══ MAIN ════════════════════════════════════════════════════ -->
   <main class="admin-main">
     <header class="admin-topbar">
+      <img class="topbar-logo" src="../assets/bonvoy-logo.jpg" alt="BonVoy" height="32" style="width:auto">
       <span class="topbar-title">Admin Panel</span>
+      <button class="admin-hamburger" id="admin-hamburger" aria-label="Menu">&#9776;</button>
       <span class="topbar-admin" id="topbar-email">—</span>
     </header>
+    <div class="admin-mobile-nav" id="admin-mobile-nav">
+      <button class="mobile-nav-item active" data-tab="orders">📦 Orders</button>
+      <button class="mobile-nav-item" data-tab="products">🎂 Products</button>
+      <button class="mobile-nav-item" data-tab="settings">⚙️ Settings</button>
+    </div>
 
     <!-- ── ORDERS TAB ──────────────────────────────────────────── -->
     <div class="tab-panel active" id="tab-orders">
@@ -303,6 +310,91 @@
   // Set "Today" as default active on page load
   var todayBtn = document.querySelector('.quick-btn[data-range="today"]');
   if (todayBtn) todayBtn.click();
+})();
+
+// Hamburger — toggle mobile nav dropdown
+(function () {
+  var hamburger = document.getElementById('admin-hamburger');
+  var mobileNav = document.getElementById('admin-mobile-nav');
+  if (!hamburger || !mobileNav) return;
+
+  hamburger.addEventListener('click', function (e) {
+    e.stopPropagation();
+    mobileNav.classList.toggle('open');
+  });
+
+  document.addEventListener('click', function (e) {
+    if (!mobileNav.contains(e.target) && e.target !== hamburger) {
+      mobileNav.classList.remove('open');
+    }
+  });
+})();
+
+// Mobile nav items — tab switching + sync with sidebar active state
+(function () {
+  var mobileItems = document.querySelectorAll('.mobile-nav-item[data-tab]');
+  mobileItems.forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      var tab = btn.dataset.tab;
+
+      // Close nav dropdown
+      var nav = document.getElementById('admin-mobile-nav');
+      if (nav) nav.classList.remove('open');
+
+      // Sync active state on mobile nav items
+      mobileItems.forEach(function (b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+
+      // Sync active state on sidebar nav items (reuse existing click logic)
+      var sidebarItem = document.querySelector('.nav-item[data-tab="' + tab + '"]');
+      if (sidebarItem) sidebarItem.click();
+    });
+  });
+
+  // Keep mobile nav in sync when sidebar items are clicked
+  document.querySelectorAll('.nav-item[data-tab]').forEach(function (item) {
+    item.addEventListener('click', function () {
+      var tab = item.dataset.tab;
+      mobileItems.forEach(function (b) {
+        b.classList.toggle('active', b.dataset.tab === tab);
+      });
+    });
+  });
+})();
+
+// MutationObserver — inject data-label attributes into order rows for mobile card layout
+(function () {
+  var labels = ['#', 'Customer', 'Phone', 'City', 'Items', 'Total', 'Date', 'Status'];
+
+  function labelRows(rows) {
+    rows.forEach(function (tr) {
+      var cells = tr.querySelectorAll('td');
+      cells.forEach(function (td, i) {
+        if (!td.dataset.label && labels[i]) td.dataset.label = labels[i];
+      });
+    });
+  }
+
+  var tbody = document.getElementById('orders-tbody');
+  if (!tbody) return;
+
+  // Label any rows already present
+  labelRows(Array.from(tbody.querySelectorAll('tr')));
+
+  var observer = new MutationObserver(function (mutations) {
+    mutations.forEach(function (m) {
+      m.addedNodes.forEach(function (node) {
+        if (node.nodeType !== 1) return;
+        if (node.tagName === 'TR') {
+          labelRows([node]);
+        } else {
+          labelRows(Array.from(node.querySelectorAll('tr')));
+        }
+      });
+    });
+  });
+
+  observer.observe(tbody, { childList: true, subtree: true });
 })();
 </script>
 </body>

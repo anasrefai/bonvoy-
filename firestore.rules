@@ -3,20 +3,22 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     match /products/{id} {
-      allow read: if resource.data.available == true;
+      // Public: only available products are visible to customers.
+      // Admin: authenticated users can read all products (including unavailable).
+      allow read: if resource.data.available == true
+                  || request.auth != null;
       allow write: if false;
     }
 
     match /orders/{id} {
       // Authenticated admins can read for onSnapshot real-time updates.
       // Writes only via Admin SDK through Netlify Functions.
-      allow read: if request.auth != null
-                  && request.auth.token.email in
-                     ['YOUR_ADMIN_EMAIL_HERE'];
+      allow read: if request.auth != null;
       allow write: if false;
     }
 
     match /settings/{doc} {
+      // Public read needed for store closed banner and delivery fees on customer site.
       allow read: if true;
       allow write: if false;
     }

@@ -10,7 +10,7 @@ function initFirebase() {
       credential: cert({
         projectId:   process.env.FIREBASE_PROJECT_ID,
         clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey:  (process.env.FIREBASE_PRIVATE_KEY || '').replace(/\\n/g, '\n'),
+        privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
       }),
     });
   }
@@ -92,6 +92,16 @@ async function updateOrderStatus(db, payload) {
   return { id, status };
 }
 
+async function saveStoreStatus(db, payload) {
+  const { isOpen } = payload;
+  if (typeof isOpen !== 'boolean') throw { code: 400, message: 'isOpen must be a boolean' };
+  await db.collection('settings').doc('store_info').set(
+    { isOpen, updatedAt: FieldValue.serverTimestamp() },
+    { merge: true }
+  );
+  return { success: true, isOpen };
+}
+
 async function updateDeliveryFee(db, payload) {
   const { fees } = payload;
   if (!fees || typeof fees !== 'object') throw { code: 400, message: 'Invalid fees object' };
@@ -107,11 +117,38 @@ async function updateDeliveryFee(db, payload) {
   return { updated: Object.keys(validated) };
 }
 
+async function getAdminProducts(db) {
+  const snap = await db.collection('products').orderBy('createdAt', 'desc').get();
+  const products = snap.docs.map(d => ({
+    id: d.id,
+    ...d.data(),
+    createdAt: d.data().createdAt?.toDate?.()?.toISOString() || null,
+    updatedAt: d.data().updatedAt?.toDate?.()?.toISOString() || null,
+  }));
+  return { products };
+}
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+
 async function getOrders(db, payload) {
-  const { status, city, search, limit: limitN = 20, startAfter } = payload || {};
+  const { status, city, search, limit: limitN = 20, startAfter, dateFrom, dateTo } = payload || {};
+
+  // Validate date range inputs
+  if (dateFrom && !DATE_RE.test(dateFrom)) throw { code: 400, message: 'Invalid date format' };
+  if (dateTo   && !DATE_RE.test(dateTo))   throw { code: 400, message: 'Invalid date format' };
+  if (dateFrom && dateTo && dateFrom > dateTo) {
+    throw { code: 400, message: 'dateFrom must be before or equal to dateTo' };
+  }
+
   let query = db.collection('orders').orderBy('createdAt', 'desc');
   if (status && STATUSES.includes(status)) query = query.where('status', '==', status);
   if (city   && CITIES.includes(city))     query = query.where('city', '==', city);
+
+  // NOTE: Combining deliveryDate filter with status/city filter may
+  // require a composite Firestore index. Deploy indexes if queries fail.
+  if (dateFrom) query = query.where('deliveryDate', '>=', dateFrom);
+  if (dateTo)   query = query.where('deliveryDate', '<=', dateTo);
+
   if (startAfter) {
     const cursor = await db.collection('orders').doc(startAfter).get();
     if (cursor.exists) query = query.startAfter(cursor);
@@ -170,7 +207,9 @@ exports.handler = async (event) => {
       case 'editProduct':       result = await editProduct(db, payload); break;
       case 'deleteProduct':     result = await deleteProduct(db, payload); break;
       case 'updateOrderStatus': result = await updateOrderStatus(db, payload); break;
+      case 'saveStoreStatus':   result = await saveStoreStatus(db, payload); break;
       case 'updateDeliveryFee': result = await updateDeliveryFee(db, payload); break;
+      case 'getAdminProducts':  result = await getAdminProducts(db); break;
       case 'getOrders':         result = await getOrders(db, payload); break;
       case 'getOrderById':      result = await getOrderById(db, payload); break;
       default: return respond(400, { error: 'Unknown action' });
