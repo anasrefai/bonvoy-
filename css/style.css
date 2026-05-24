@@ -658,3 +658,93 @@ p  { font-size: 1rem; }
   .card-name, .card-desc { word-break: break-word; }
   .about-detail { font-size: 0.9rem; }
 }
+
+/* ===================================================================
+   ANIMATIONS
+   =================================================================== */
+
+/* ── Hero entrance — triggers on page load via class on element ────── */
+@keyframes hero-slide-up {
+  from { opacity: 0; transform: translateY(40px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes hero-pop-in {
+  from { opacity: 0; transform: scale(0.8); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.hero-title-anim {
+  animation: hero-slide-up 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 0.1s both;
+}
+
+.hero-sub-anim {
+  animation: hero-slide-up 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 0.35s both;
+}
+
+.hero-cta-anim {
+  animation: hero-pop-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.55s both;
+}
+
+/* ── Cart button — persistent pulse-glow every 4 s ─────────────────── */
+@keyframes cart-pulse-glow {
+  0%   { transform: scale(1);    box-shadow: 0 0 0 0   rgba(212,98,42,0); }
+  7.5% { transform: scale(1.06); box-shadow: 0 0 0 8px rgba(212,98,42,0.25); }
+  15%  { transform: scale(1);    box-shadow: 0 0 0 0   rgba(212,98,42,0); }
+  100% { transform: scale(1);    box-shadow: 0 0 0 0   rgba(212,98,42,0); }
+}
+
+#cart-btn {
+  animation: cart-pulse-glow 4s ease infinite;
+}
+
+/* ── Cart button bounce — JS adds/removes .cart-bounce ─────────────── */
+@keyframes cart-btn-bounce {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(1.2); }
+  60%  { transform: scale(0.9); }
+  80%  { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+#cart-btn.cart-bounce {
+  animation: cart-btn-bounce 0.5s ease forwards;
+}
+
+/* ── Product card scroll reveal ─────────────────────────────────────── */
+@keyframes card-reveal-in {
+  from { opacity: 0; transform: translateY(30px) scale(0.96); }
+  to   { opacity: 1; transform: translateY(0)    scale(1); }
+}
+
+.product-card.card-hidden {
+  opacity: 0;
+  transform: translateY(30px) scale(0.96);
+}
+
+.product-card.card-reveal {
+  animation: card-reveal-in 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* ── Section reveal — .reveal-on-scroll / .revealed ─────────────────── */
+.reveal-on-scroll {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.6s ease-out, transform 0.6s ease-out;
+}
+
+.reveal-on-scroll.revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Category tab pop — JS adds/removes .tab-pop ───────────────────── */
+@keyframes tab-pop-anim {
+  0%   { transform: scale(1); }
+  50%  { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+.tab-btn.tab-pop {
+  animation: tab-pop-anim 0.3s ease;
+}

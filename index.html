@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/style.css?v=3">
 </head>
 <body>
 
@@ -177,9 +177,9 @@
 <section class="hero" id="home">
   <div class="container">
     <div class="hero-content">
-      <h1>Cakes &amp; Sweets,<br>Delivered to Your Door 🚀</h1>
-      <p>Same-day delivery · Amman &amp; all Jordan</p>
-      <div class="hero-cta">
+      <h1 class="hero-title-anim">Cakes &amp; Sweets,<br>Delivered to Your Door 🚀</h1>
+      <p class="hero-sub-anim">Same-day delivery · Amman &amp; all Jordan</p>
+      <div class="hero-cta hero-cta-anim">
         <a href="#menu" class="btn btn-primary">Order Now</a>
         <a href="#about" class="btn btn-outline">Our Story</a>
       </div>
@@ -215,7 +215,7 @@
 <!-- ═══ MENU ═══════════════════════════════════════════════════════ -->
 <section class="section" id="menu">
   <div class="container">
-    <div class="section-header">
+    <div class="section-header reveal-on-scroll">
       <h2>Our Menu</h2>
       <p>Fresh-baked daily, delivered with love</p>
     </div>
@@ -279,7 +279,7 @@
 <section class="section about-section" id="about">
   <div class="container">
     <div class="about-inner">
-      <div class="about-text">
+      <div class="about-text reveal-on-scroll">
         <h2>Our Story</h2>
         <p>BonVoy was born in Amman with one simple belief: every celebration deserves something extraordinary. We bake fresh cakes, rich brownies, and indulgent cookies — crafted from premium ingredients, delivered to your door.</p>
         <p>As a sister brand of <a href="https://www.instagram.com/cakeh.jo" target="_blank" rel="noopener">@cakeh.jo</a>, we bring 132K followers' worth of trust and passion into every order. Whether it's a birthday, a Tuesday, or just because — BonVoy delivers joy.</p>
@@ -303,7 +303,7 @@
           </div>
         </div>
       </div>
-      <div class="about-visual">
+      <div class="about-visual reveal-on-scroll">
         <div class="about-rocket" aria-hidden="true">
           <svg width="180" height="220" viewBox="0 0 80 110" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M40 8 C40 8 62 14 62 38 L62 68 L50 80 L30 80 L18 68 L18 38 C18 14 40 8 40 8Z"
@@ -469,5 +469,71 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js" defer></script>
 <script src="js/firebase-config.js" defer></script>
 <script src="js/main.js" defer></script>
+
+<!-- Animation JS -->
+<script>
+(function () {
+  'use strict';
+
+  /* ── Product card reveal (MutationObserver + IntersectionObserver) ── */
+  var grid = document.getElementById('product-grid');
+
+  if (grid && window.IntersectionObserver && window.MutationObserver) {
+
+    var cardIO = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        var card = entry.target;
+        cardIO.unobserve(card);
+        card.style.animationDelay = card.dataset.cardDelay || '0ms';
+        card.classList.remove('card-hidden');
+        card.classList.add('card-reveal');
+        card.addEventListener('animationend', function () {
+          card.classList.remove('card-reveal');
+          card.style.animationDelay = '';
+        }, { once: true });
+      });
+    }, { threshold: 0.15 });
+
+    function initCards() {
+      cardIO.disconnect();
+      var cards = grid.querySelectorAll('.product-card');
+      cards.forEach(function (card, i) {
+        card.dataset.cardDelay = (i * 80) + 'ms';
+        card.classList.add('card-hidden');
+        cardIO.observe(card);
+      });
+    }
+
+    new MutationObserver(function () {
+      initCards();
+    }).observe(grid, { childList: true });
+  }
+
+  /* ── Section reveals ─────────────────────────────────────────────── */
+  if (window.IntersectionObserver) {
+    var sectionIO = new IntersectionObserver(function (entries) {
+      entries.forEach(function (entry) {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add('revealed');
+        sectionIO.unobserve(entry.target);
+      });
+    }, { threshold: 0.2 });
+
+    document.querySelectorAll('.reveal-on-scroll').forEach(function (el) {
+      sectionIO.observe(el);
+    });
+  }
+
+  /* ── Category tab pop ─────────────────────────────────────────────── */
+  document.querySelectorAll('.tab-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      btn.classList.add('tab-pop');
+      setTimeout(function () { btn.classList.remove('tab-pop'); }, 300);
+    });
+  });
+
+})();
+</script>
 </body>
 </html>
