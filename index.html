@@ -31,24 +31,12 @@
     </svg>
   </div>
   <!-- Stars injected by script below using same .star-deco class as hero -->
-  <div id="cookie-display">
-    <div id="cookie-left">
-      <img id="vid-left" src="assets/cookie.apng" style="width:100vw;height:100vw;display:block;">
-    </div>
-    <div id="cookie-right">
-      <img id="vid-right" src="assets/cookie.apng" style="width:100vw;height:100vw;display:block;margin-left:-50vw;">
-    </div>
-  </div>
 </div>
 <script>
 (function () {
   document.body.style.overflow = 'hidden';
 
-  var loader   = document.getElementById('cookie-loader');
-  var leftDiv  = document.getElementById('cookie-left');
-  var rightDiv = document.getElementById('cookie-right');
-  var vidLeft  = document.getElementById('vid-left');
-  var vidRight = document.getElementById('vid-right');
+  var loader = document.getElementById('cookie-loader');
 
   // Desktop: skip cookie animation, show simple branded loader instead
   if (window.innerWidth > 768) {
@@ -57,41 +45,68 @@
     return;
   }
 
-  // Safety fallback
-  var fallback = setTimeout(removeLoader, 6000);
+  // Safety fallback — 5s hard limit
+  var fallback = setTimeout(removeLoader, 5000);
+
+  var bgTop = document.createElement('div');
+  bgTop.id = 'cookie-bg-top';
+  document.body.insertBefore(bgTop, loader);
+
+  var bgBottom = document.createElement('div');
+  bgBottom.id = 'cookie-bg-bottom';
+  document.body.insertBefore(bgBottom, loader);
 
   function removeLoader() {
     clearTimeout(fallback);
     document.body.style.overflow = '';
+    if (bgTop && bgTop.parentNode) bgTop.parentNode.removeChild(bgTop);
+    if (bgBottom && bgBottom.parentNode) bgBottom.parentNode.removeChild(bgBottom);
     if (loader && loader.parentNode) loader.parentNode.removeChild(loader);
   }
 
+  // Build mobile crack structure
+  var crackWrapper = document.createElement('div');
+  crackWrapper.id = 'cookie-crack-wrapper';
+  var stage = document.createElement('div');
+  stage.id = 'cookie-stage';
+  var whole = document.createElement('img');
+  whole.id = 'cookie-whole';
+  whole.src = 'assets/first frame.png';
+  var top = document.createElement('img');
+  top.id = 'cookie-top';
+  top.src = 'assets/cracked up.png';
+  var bottom = document.createElement('img');
+  bottom.id = 'cookie-bottom';
+  bottom.src = 'assets/cracked down.png';
+  stage.appendChild(whole);
+  stage.appendChild(top);
+  stage.appendChild(bottom);
+  crackWrapper.appendChild(stage);
+  loader.appendChild(crackWrapper);
+
   function doSplit() {
-    requestAnimationFrame(function () {
-      requestAnimationFrame(function () {
-        loader.style.transition   = 'opacity 0.6s ease-in';
-        loader.style.opacity      = '0';
-        leftDiv.style.transition  = 'transform 0.6s ease-in';
-        leftDiv.style.transform   = 'translateX(-150vw)';
-        rightDiv.style.transition = 'transform 0.6s ease-in';
-        rightDiv.style.transform  = 'translateX(150vw)';
-        setTimeout(removeLoader, 700);
-      });
-    });
+    var t2s = 'transform 2s cubic-bezier(0.4, 0, 0.2, 1)';
+    bgTop.style.transition    = t2s;
+    bgBottom.style.transition = t2s;
+    top.style.transition      = t2s;
+    bottom.style.transition   = t2s;
+    bgTop.style.transform    = 'translateY(-100vh)';
+    bgBottom.style.transform = 'translateY(100vh)';
+    top.style.transform      = 'translateY(-140vh)';
+    bottom.style.transform   = 'translateY(140vh)';
+    setTimeout(removeLoader, 2000);
   }
 
-  var readyCount = 0;
-  function onReady() {
-    readyCount++;
-    if (readyCount === 2) {
-      // APNG auto-plays on load; wait 1s then trigger split after animation duration (4170ms)
-      setTimeout(function () {
-        setTimeout(doSplit, 4170);
-      }, 1000);
-    }
-  }
-  vidLeft.onload  = onReady;
-  vidRight.onload = onReady;
+  // t=0: load fires → t=700ms: unlock scroll, whole hides, halves+curtains slide → t=2700ms: removed
+  window.addEventListener('load', function () {
+    setTimeout(function () {
+      document.body.style.overflow = '';
+      whole.style.opacity = '0';
+      top.style.opacity = '1';
+      bottom.style.opacity = '1';
+      doSplit();
+    }, 700);
+  });
 
   // Inject stars using the same .star-deco class and twinkle animation as the hero
   var starData = [

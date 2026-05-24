@@ -477,9 +477,23 @@ p  { font-size: 1rem; }
 .store-closed-banner.visible { display: block; }
 
 /* ─── Cookie Loading Screen ──────────────────────────────────── */
+#cookie-bg-top {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 50vh;
+  background: #F5EFE0;
+  z-index: 9998;
+}
+#cookie-bg-bottom {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: 50vh;
+  background: #F5EFE0;
+  z-index: 9998;
+}
 #cookie-loader {
   position: fixed; inset: 0;
-  background: #F5EFE0;
+  background: transparent;
   z-index: 9999;
   display: flex; align-items: center; justify-content: center;
   overflow: hidden;
@@ -489,42 +503,46 @@ p  { font-size: 1rem; }
   animation: rocket-float 3s ease-in-out infinite;
   pointer-events: none;
 }
-#cookie-display {
-  width: 100vw;
-  height: 100vh;
+#cookie-crack-wrapper {
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 0;
-  font-size: 0;
-  background: #F5EFE0;
+  pointer-events: none;
 }
-#cookie-left,
-#cookie-right {
-  width: 50vw;
-  height: 100vh;
-  overflow: hidden;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  margin: 0;
-  padding: 0;
-  border: none;
-  outline: none;
+#cookie-stage {
+  position: relative;
+  width: 80vw;
+  max-width: 360px;
+  height: 80vw;
+  max-height: 360px;
 }
-#cookie-left video, #cookie-left img {
-  width: 100vw;
-  height: 100vw;
-  display: block;
+#cookie-whole {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  opacity: 1;
 }
-#cookie-right video, #cookie-right img {
-  width: 100vw;
-  height: 100vw;
-  display: block;
-  margin-left: -50vw;
+#cookie-top {
+  position: absolute;
+  top: 5%; left: 0;
+  width: 100%;
+  height: 50%;
+  object-fit: cover;
+  object-position: top;
+  opacity: 0;
 }
-#cookie-left img, #cookie-right img {
-  mix-blend-mode: multiply;
+#cookie-bottom {
+  position: absolute;
+  bottom: 5%; left: 0;
+  width: 100%;
+  height: 50%;
+  object-fit: cover;
+  object-position: bottom;
+  opacity: 0;
 }
 /* Simple desktop loader */
 #simple-loader {
@@ -546,14 +564,6 @@ p  { font-size: 1rem; }
   0%, 100% { opacity: 0.3; transform: scale(0.8); }
   50%       { opacity: 1;   transform: scale(1.2); }
 }
-/* Mobile cookie video sizing fix */
-@media (max-width: 768px) {
-  #cookie-display { width: 100vw; height: 100vw; }
-  #cookie-left, #cookie-right { width: 50vw; height: 100vw; }
-  #cookie-left video, #cookie-left img   { width: 100vw; height: 100vw; margin-left: 0; }
-  #cookie-right video, #cookie-right img { width: 100vw; height: 100vw; margin-left: -50vw; }
-}
-
 /* ─── Responsive — 767px (tablet/mobile base) ────────────────── */
 @media (max-width: 767px) {
   .nav-links { display: none; }
