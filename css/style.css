@@ -748,3 +748,37 @@ p  { font-size: 1rem; }
 .tab-btn.tab-pop {
   animation: tab-pop-anim 0.3s ease;
 }
+
+/* ── Hero CTA "Order Now" — deeper burnt orange-red (#B8420A) ───────── */
+.hero-cta .btn-primary {
+  background: #B8420A;
+  box-shadow: 0 4px 14px rgba(184,66,10,0.35);
+  transition: background 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              transform  0.2s cubic-bezier(0.4, 0, 0.2, 1),
+              box-shadow 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.hero-cta .btn-primary:hover {
+  background: #9A3408;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(154,52,8,0.45);
+}
+
+/* ── Rocket emoji — must be inline-block for transform to apply ──────── */
+.rocket-emoji {
+  display: inline-block;
+}
+
+/* ── Rocket emoji launch on hover ───────────────────────────────────── */
+/* Note: named rocket-emoji-launch to avoid collision with the existing
+   @keyframes rocket-launch used by .success-rocket on the order screen */
+@keyframes rocket-emoji-launch {
+  0%   { transform: translateY(0)    rotate(0deg);   opacity: 1; }
+  40%  { transform: translateY(-6px) rotate(-10deg); opacity: 1; }
+  70%  { transform: translateY(-3px) rotate(5deg);   opacity: 1; }
+  100% { transform: translateY(0)    rotate(0deg);   opacity: 1; }
+}
+
+.hero-cta .btn-primary:hover .rocket-emoji {
+  animation: rocket-emoji-launch 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
