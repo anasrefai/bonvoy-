@@ -6,13 +6,18 @@ const { getAuth }                      = require('firebase-admin/auth');
 
 function initFirebase() {
   if (!getApps().length) {
-    initializeApp({
-      credential: cert({
-        projectId:   process.env.FIREBASE_PROJECT_ID,
-        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-      }),
-    });
+    try {
+      initializeApp({
+        credential: cert({
+          projectId:   process.env.FIREBASE_PROJECT_ID,
+          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+          privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+        }),
+      });
+    } catch (err) {
+      console.error('FIREBASE INIT ERROR:', err.message, err.stack);
+      throw err;
+    }
   }
   return { db: getFirestore(), auth: getAuth() };
 }
