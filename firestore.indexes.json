@@ -16,13 +16,6 @@
         { "fieldPath": "available", "order": "ASCENDING" },
         { "fieldPath": "order", "order": "ASCENDING" }
       ]
-    },
-    {
-      "collectionGroup": "extraGroups",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "createdAt", "order": "DESCENDING" }
-      ]
     }
   ],
   "fieldOverrides": []
