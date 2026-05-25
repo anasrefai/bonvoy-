@@ -19,11 +19,13 @@ function getAdmin() {
 }
 
 /* ─── Constants ────────────────────────────────────────────── */
-const ALLOWED_ORIGINS = [
-  'https://bonvoy.netlify.app',
+const ALLOWED_ORIGINS = new Set([
+  'https://bonvoy-cookies.netlify.app',
   'http://localhost:8888',
   'http://localhost:3000',
-];
+  // Additional origins from env var (e.g. custom domain): ALLOWED_ORIGINS=https://example.com
+  ...(process.env.ALLOWED_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean),
+]);
 const CITIES = ['Amman','Salt','Zarqa','Jerash','Irbid','Madaba','Balqaa'];
 const NAME_RE  = /^[؀-ۿa-zA-Z\s'\-]{2,80}$/;
 const PHONE_RE = /^(07[789]\d{7}|(\+9627[789]\d{7}))$/;
@@ -63,7 +65,7 @@ exports.handler = async (event) => {
 
   // CORS check
   const origin = event.headers['origin'] || '';
-  if (!ALLOWED_ORIGINS.includes(origin)) {
+  if (!ALLOWED_ORIGINS.has(origin)) {
     // Allow missing origin (server-to-server / local file) in dev
     if (origin && !origin.includes('localhost')) {
       return respond(403, { error: 'Forbidden' });
