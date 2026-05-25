@@ -37,6 +37,16 @@ setInterval(() => {
 
 /* ─── API helper ────────────────────────────────────────────── */
 async function adminAction(action, payload = {}) {
+  if (action === 'addProduct' || action === 'editProduct') {
+    payload.hasExtras      = document.getElementById('p-has-extras')?.checked || false;
+    payload.extrasLabel    = document.getElementById('p-extras-label')?.value.trim() || '';
+    payload.extrasRequired = document.getElementById('p-extras-required')?.checked || false;
+    payload.extrasMultiple = document.getElementById('p-extras-multiple')?.checked || false;
+    const sourceOwn        = document.getElementById('extras-source-own')?.checked;
+    payload.extrasGroupId  = (sourceOwn || !payload.hasExtras)
+      ? null
+      : (document.getElementById('p-extras-group-id')?.value || null);
+  }
   const res = await fetch('/.netlify/functions/admin-action', {
     method:  'POST',
     headers: {
@@ -840,27 +850,6 @@ async function _uploadExtraImage(file, parentId) {
 
 /* Extend product form save to include extras config */
 const _origProductForm = document.getElementById('product-form').onsubmit;
-document.getElementById('product-form').addEventListener('submit', () => {
-  // The original submit handler runs; we just need to patch the payload.
-  // Patching happens via the adminAction call inside the original handler.
-  // We override by monkey-patching adminAction for addProduct/editProduct once.
-});
-
-// Patch product save payload before it hits adminAction
-const _origAdminAction = adminAction;
-async function adminAction(action, payload = {}) {
-  if (action === 'addProduct' || action === 'editProduct') {
-    payload.hasExtras      = document.getElementById('p-has-extras')?.checked  || false;
-    payload.extrasLabel    = document.getElementById('p-extras-label')?.value.trim()  || '';
-    payload.extrasRequired = document.getElementById('p-extras-required')?.checked || false;
-    payload.extrasMultiple = document.getElementById('p-extras-multiple')?.checked || false;
-    const sourceOwn        = document.getElementById('extras-source-own')?.checked;
-    payload.extrasGroupId  = (sourceOwn || !payload.hasExtras)
-      ? null
-      : (document.getElementById('p-extras-group-id')?.value || null);
-  }
-  return _origAdminAction(action, payload);
-}
 
 /* ═══════════════════════════════════════════════════════════════
    EXTRAS GROUPS TAB
