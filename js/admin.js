@@ -436,6 +436,39 @@ function openProductModal(product, id) {
   if (product?.imageUrl) { preview.src = product.imageUrl; preview.classList.add('visible'); }
   else { preview.src = ''; preview.classList.remove('visible'); }
   document.getElementById('product-modal').classList.add('open');
+
+  // Populate extras config
+  const hasExtras      = product?.hasExtras      || false;
+  const extrasLabel    = product?.extrasLabel    || '';
+  const extrasRequired = product?.extrasRequired || false;
+  const extrasMultiple = product?.extrasMultiple || false;
+  const extrasGroupId  = product?.extrasGroupId  || '';
+
+  document.getElementById('p-has-extras').checked     = hasExtras;
+  document.getElementById('p-extras-label').value     = extrasLabel;
+  document.getElementById('p-extras-required').checked = extrasRequired;
+  document.getElementById('p-extras-multiple').checked = extrasMultiple;
+  document.getElementById('extras-config').style.display = hasExtras ? 'block' : 'none';
+
+  if (extrasGroupId) {
+    document.getElementById('extras-source-group').checked = true;
+    document.getElementById('extras-own-panel').style.display   = 'none';
+    document.getElementById('extras-group-panel').style.display = 'block';
+  } else {
+    document.getElementById('extras-source-own').checked = true;
+    document.getElementById('extras-own-panel').style.display   = 'block';
+    document.getElementById('extras-group-panel').style.display = 'none';
+  }
+
+  _loadGroupsForSelect(extrasGroupId);
+
+  if (id && hasExtras && !extrasGroupId) {
+    loadProductExtras(id);
+  } else {
+    document.getElementById('extras-items-list').innerHTML = '';
+    document.getElementById('extras-count').textContent = 'Extras (0/25)';
+    document.getElementById('add-extra-form').style.display = 'none';
+  }
 }
 
 document.getElementById('product-modal-close').addEventListener('click', () => closeModal('product-modal'));
@@ -612,47 +645,6 @@ function escHtml(str) {
 /* ═══════════════════════════════════════════════════════════════
    PRODUCT MODAL — EXTRAS CONFIG
    ═══════════════════════════════════════════════════════════════ */
-
-/* Extend openProductModal to populate extras fields */
-const _origOpenProductModal = openProductModal;
-function openProductModal(product, id) {
-  _origOpenProductModal(product, id);
-
-  // Populate extras config
-  const hasExtras      = product?.hasExtras      || false;
-  const extrasLabel    = product?.extrasLabel    || '';
-  const extrasRequired = product?.extrasRequired || false;
-  const extrasMultiple = product?.extrasMultiple || false;
-  const extrasGroupId  = product?.extrasGroupId  || '';
-
-  document.getElementById('p-has-extras').checked     = hasExtras;
-  document.getElementById('p-extras-label').value     = extrasLabel;
-  document.getElementById('p-extras-required').checked = extrasRequired;
-  document.getElementById('p-extras-multiple').checked = extrasMultiple;
-  document.getElementById('extras-config').style.display = hasExtras ? 'block' : 'none';
-
-  if (extrasGroupId) {
-    document.getElementById('extras-source-group').checked = true;
-    document.getElementById('extras-own-panel').style.display   = 'none';
-    document.getElementById('extras-group-panel').style.display = 'block';
-  } else {
-    document.getElementById('extras-source-own').checked = true;
-    document.getElementById('extras-own-panel').style.display   = 'block';
-    document.getElementById('extras-group-panel').style.display = 'none';
-  }
-
-  // Populate shared group dropdown
-  _loadGroupsForSelect(extrasGroupId);
-
-  // Load per-product extras if editing
-  if (id && hasExtras && !extrasGroupId) {
-    loadProductExtras(id);
-  } else {
-    document.getElementById('extras-items-list').innerHTML = '';
-    document.getElementById('extras-count').textContent = 'Extras (0/25)';
-    document.getElementById('add-extra-form').style.display = 'none';
-  }
-}
 
 /* Toggle hasExtras section */
 document.getElementById('p-has-extras').addEventListener('change', function () {
@@ -847,9 +839,6 @@ async function _uploadExtraImage(file, parentId) {
     );
   });
 }
-
-/* Extend product form save to include extras config */
-const _origProductForm = document.getElementById('product-form').onsubmit;
 
 /* ═══════════════════════════════════════════════════════════════
    EXTRAS GROUPS TAB

@@ -8,6 +8,13 @@ service firebase.storage {
                    && request.resource.size < 5 * 1024 * 1024
                    && request.resource.contentType.matches('image/.*');
     }
+    match /extras/{parentId}/{filename} {
+      allow read: if true;
+      allow write: if request.auth != null
+                   && request.auth.token.email == 'omar2008admin@bonvoyadmin.com'
+                   && request.resource.size < 5 * 1024 * 1024
+                   && request.resource.contentType.matches('image/.*');
+    }
     match /{allPaths=**} {
       allow read, write: if false;
     }
