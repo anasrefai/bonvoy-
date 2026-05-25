@@ -1,25 +1,19 @@
 'use strict';
 
-const { initializeApp, getApps, cert } = require('firebase-admin/app');
-const { getFirestore, FieldValue }     = require('firebase-admin/firestore');
-const { getAuth }                      = require('firebase-admin/auth');
+const admin = require('firebase-admin');
+const FieldValue = admin.firestore.FieldValue;
 
 function initFirebase() {
-  if (!getApps().length) {
-    try {
-      initializeApp({
-        credential: cert({
-          projectId:   process.env.FIREBASE_PROJECT_ID,
-          clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-          privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
-        }),
-      });
-    } catch (err) {
-      console.error('FIREBASE INIT ERROR:', err.message, err.stack);
-      throw err;
-    }
+  if (!admin.apps.length) {
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId:   process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+      }),
+    });
   }
-  return { db: getFirestore(), auth: getAuth() };
+  return { db: admin.firestore(), auth: admin.auth() };
 }
 
 function respond(statusCode, body) {
