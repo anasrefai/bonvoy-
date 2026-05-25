@@ -8,7 +8,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="../css/style.css?v=4">
-  <link rel="stylesheet" href="../css/admin.css?v=3">
+  <link rel="stylesheet" href="../css/admin.css?v=4">
 </head>
 <body>
 
@@ -31,6 +31,9 @@
         <li class="nav-item" data-tab="settings">
           <span class="nav-icon">⚙️</span> Settings
         </li>
+        <li class="nav-item" data-tab="extras-groups">
+          <span class="nav-icon">🎁</span> Extras Groups
+        </li>
       </ul>
     </nav>
     <div class="sidebar-footer">
@@ -51,6 +54,7 @@
       <button class="mobile-nav-item active" data-tab="orders">📦 Orders</button>
       <button class="mobile-nav-item" data-tab="products">🎂 Products</button>
       <button class="mobile-nav-item" data-tab="settings">⚙️ Settings</button>
+      <button class="mobile-nav-item" data-tab="extras-groups">🎁 Extras Groups</button>
     </div>
 
     <!-- ── ORDERS TAB ──────────────────────────────────────────── -->
@@ -162,6 +166,21 @@
         </a>
       </div>
     </div>
+    <!-- ── EXTRAS GROUPS TAB ──────────────────────────────────── -->
+    <div class="tab-panel" id="tab-extras-groups">
+      <div class="extras-groups-header">
+        <h2 style="font-size:1.1rem;color:#3D2010">Extras Groups</h2>
+        <button class="btn btn-primary" id="btn-new-group" style="padding:9px 20px;font-size:0.875rem">+ New Group</button>
+      </div>
+      <div class="new-group-form" id="new-group-form">
+        <input type="text" id="new-group-name" placeholder="Group name…" maxlength="80">
+        <button type="button" class="btn-save" id="save-new-group" style="font-size:0.82rem;padding:8px 18px">Save</button>
+        <button type="button" class="btn-cancel" id="cancel-new-group" style="font-size:0.82rem;padding:8px 14px">Cancel</button>
+      </div>
+      <div class="extras-groups-list" id="extras-groups-list">
+        <p style="opacity:0.5;text-align:center;padding:24px">Loading groups…</p>
+      </div>
+    </div>
   </main>
 
   <!-- Bottom Nav (mobile) -->
@@ -175,6 +194,9 @@
       </div>
       <div class="bottom-nav-item" data-tab="settings">
         <span class="bottom-nav-icon">⚙️</span>Settings
+      </div>
+      <div class="bottom-nav-item" data-tab="extras-groups">
+        <span class="bottom-nav-icon">🎁</span>Extras
       </div>
     </div>
   </nav>
@@ -239,6 +261,82 @@
         </label>
         <span style="font-weight:600;font-size:0.875rem">Available</span>
       </div>
+
+      <!-- ── Extras config ────────────────────────────────────── -->
+      <div class="form-group" style="display:flex;align-items:center;gap:10px;margin-bottom:6px">
+        <label class="toggle-switch" style="margin:0">
+          <input type="checkbox" id="p-has-extras">
+          <span class="toggle-slider"></span>
+        </label>
+        <span style="font-weight:600;font-size:0.875rem">This product has customization options</span>
+      </div>
+
+      <div id="extras-config" style="display:none">
+        <div class="form-group">
+          <label>Customization section title</label>
+          <input type="text" id="p-extras-label" maxlength="80" placeholder="Choose your sauce">
+        </div>
+        <div class="extras-toggles">
+          <div class="extras-toggle-row">
+            <label class="toggle-switch" style="margin:0">
+              <input type="checkbox" id="p-extras-required">
+              <span class="toggle-slider"></span>
+            </label>
+            <span>Require selection before adding to cart</span>
+          </div>
+          <div class="extras-toggle-row">
+            <label class="toggle-switch" style="margin:0">
+              <input type="checkbox" id="p-extras-multiple">
+              <span class="toggle-slider"></span>
+            </label>
+            <span>Allow selecting multiple options</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Where do extras come from?</label>
+          <div class="extras-source-radios">
+            <label class="extras-source-option">
+              <input type="radio" name="p-extras-source" id="extras-source-own" value="own" checked> Own list
+            </label>
+            <label class="extras-source-option">
+              <input type="radio" name="p-extras-source" id="extras-source-group" value="group"> Shared group
+            </label>
+          </div>
+        </div>
+        <div id="extras-own-panel">
+          <div class="extras-panel-header">
+            <span class="extras-panel-count" id="extras-count">Extras (0/25)</span>
+            <button type="button" class="btn-add-extra" id="btn-add-extra">+ Add Extra</button>
+          </div>
+          <div class="extras-items-list" id="extras-items-list"></div>
+          <div class="add-extra-form" id="add-extra-form">
+            <input type="text" id="new-extra-name" placeholder="Extra name" maxlength="80">
+            <input type="number" id="new-extra-price" placeholder="Price in JOD (0 = free)" min="0" max="100" step="0.01" value="0">
+            <input type="file" id="new-extra-img" accept="image/*">
+            <div class="extras-toggle-row">
+              <label class="toggle-switch" style="margin:0">
+                <input type="checkbox" id="new-extra-avail" checked>
+                <span class="toggle-slider"></span>
+              </label>
+              <span>Available</span>
+            </div>
+            <div class="add-extra-form-actions">
+              <button type="button" class="btn-save" id="save-new-extra" style="font-size:0.82rem;padding:8px 18px">Save Extra</button>
+              <button type="button" class="btn-cancel" id="cancel-new-extra" style="font-size:0.82rem;padding:8px 14px">Cancel</button>
+            </div>
+          </div>
+        </div>
+        <div id="extras-group-panel" style="display:none">
+          <div class="form-group">
+            <label>Select shared extras group</label>
+            <select id="p-extras-group-id" style="width:100%;padding:10px 13px;border-radius:10px;border:1.5px solid rgba(61,32,16,0.15);background:#F5EFE0;font-family:inherit;font-size:0.9rem;color:#3D2010;outline:none">
+              <option value="">— Select a group —</option>
+            </select>
+          </div>
+        </div>
+      </div>
+      <!-- ── /Extras config ────────────────────────────────────── -->
+
       <div class="modal-footer">
         <button type="button" class="btn-cancel" id="product-cancel-btn">Cancel</button>
         <button type="submit" class="btn-save" id="product-save-btn">Save Product</button>

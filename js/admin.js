@@ -63,6 +63,7 @@ function initDashboard() {
 }
 
 /* ─── Tab switching ─────────────────────────────────────────── */
+let _extrasGroupsLoaded = false;
 function bindTabs() {
   const allNavItems = document.querySelectorAll('.nav-item, .bottom-nav-item');
   allNavItems.forEach(item => {
@@ -70,8 +71,16 @@ function bindTabs() {
       const tab = item.dataset.tab;
       allNavItems.forEach(i => i.classList.toggle('active', i.dataset.tab === tab));
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tab-' + tab));
+      // Also sync mobile nav items
+      document.querySelectorAll('.mobile-nav-item[data-tab]').forEach(m => {
+        m.classList.toggle('active', m.dataset.tab === tab);
+      });
 
       if (tab === 'orders') markOrdersSeen();
+      if (tab === 'extras-groups' && !_extrasGroupsLoaded) {
+        _extrasGroupsLoaded = true;
+        loadExtrasGroupsTab();
+      }
     });
   });
 }
@@ -193,12 +202,27 @@ async function openOrderDetail(id) {
       ? `<a class="maps-link" href="https://maps.google.com/?q=${o.coordinates.lat},${o.coordinates.lon}" target="_blank" rel="noopener">View on Google Maps ↗</a>`
       : '—';
 
-    const itemsList = (o.items || []).map(i =>
-      `<div style="display:flex;justify-content:space-between;font-size:0.82rem;margin-bottom:4px">
-         <span>${escHtml(i.name)} × ${i.qty}</span>
-         <span>JOD ${(i.price * i.qty).toFixed(2)}</span>
-       </div>`
-    ).join('');
+    const itemsList = (o.items || []).map(i => {
+      const baseLineTotal = i.price * i.qty;
+      const extrasBlock = (i.extras && i.extras.length)
+        ? i.extras.map(ex =>
+            `<div style="font-size:0.78rem;color:#5C3D1E;opacity:0.75;padding-left:12px">
+               • ${escHtml(ex.name)} ${ex.price > 0 ? '(+JOD ' + Number(ex.price).toFixed(2) + ')' : '(Free)'}
+             </div>`).join('')
+          + (i.extrasTotal
+              ? `<div style="font-size:0.78rem;color:#D4622A;font-weight:600;padding-left:12px">Extras: +JOD ${Number(i.extrasTotal).toFixed(2)}</div>`
+              : '')
+        : '';
+      const lineTotal = (i.price + (i.extras || []).reduce((s,ex)=>s+(ex.price||0),0)) * i.qty;
+      return `<div style="margin-bottom:8px">
+        <div style="display:flex;justify-content:space-between;font-size:0.82rem">
+          <span>${escHtml(i.name)} × ${i.qty}</span>
+          <span>JOD ${lineTotal.toFixed(2)}</span>
+        </div>${extrasBlock}</div>`;
+    }).join('');
+
+    const baseSubtotal   = (o.items || []).reduce((s,i)=>s+i.price*i.qty, 0);
+    const extrasSubtotal = (o.items || []).reduce((s,i)=>s+(i.extrasTotal||0), 0);
 
     body.innerHTML = `
       <div class="order-detail-row"><span class="order-detail-label">Order ID</span><span style="font-size:0.8rem">${escHtml(o.id)}</span></div>
@@ -211,8 +235,13 @@ async function openOrderDetail(id) {
       <div class="order-detail-row"><span class="order-detail-label">Notes</span><span>${escHtml(o.notes || '—')}</span></div>
       <hr style="margin:12px 0;border:none;border-top:1px solid rgba(61,32,16,0.08)">
       ${itemsList}
-      <div style="display:flex;justify-content:space-between;font-weight:700;font-size:0.9rem;margin-top:8px">
-        <span>Total</span><span>JOD ${Number(o.total).toFixed(2)}</span>
+      <div style="font-size:0.82rem;margin-top:8px;display:flex;flex-direction:column;gap:4px">
+        <div style="display:flex;justify-content:space-between;opacity:0.7"><span>Items subtotal</span><span>JOD ${baseSubtotal.toFixed(2)}</span></div>
+        ${extrasSubtotal > 0 ? `<div style="display:flex;justify-content:space-between;opacity:0.7"><span>Extras subtotal</span><span>+JOD ${extrasSubtotal.toFixed(2)}</span></div>` : ''}
+        <div style="display:flex;justify-content:space-between;opacity:0.7"><span>Delivery fee</span><span>JOD ${Number(o.deliveryFee||0).toFixed(2)}</span></div>
+        <div style="display:flex;justify-content:space-between;font-weight:700;font-size:0.9rem;border-top:1px solid rgba(61,32,16,0.08);padding-top:6px;margin-top:2px">
+          <span>Total</span><span>JOD ${Number(o.total).toFixed(2)}</span>
+        </div>
       </div>
       <hr style="margin:12px 0;border:none;border-top:1px solid rgba(61,32,16,0.08)">
       <div class="order-detail-row">
@@ -569,3 +598,484 @@ function closeModal(id) { document.getElementById(id).classList.remove('open'); 
 function escHtml(str) {
   return String(str ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   PRODUCT MODAL — EXTRAS CONFIG
+   ═══════════════════════════════════════════════════════════════ */
+
+/* Extend openProductModal to populate extras fields */
+const _origOpenProductModal = openProductModal;
+function openProductModal(product, id) {
+  _origOpenProductModal(product, id);
+
+  // Populate extras config
+  const hasExtras      = product?.hasExtras      || false;
+  const extrasLabel    = product?.extrasLabel    || '';
+  const extrasRequired = product?.extrasRequired || false;
+  const extrasMultiple = product?.extrasMultiple || false;
+  const extrasGroupId  = product?.extrasGroupId  || '';
+
+  document.getElementById('p-has-extras').checked     = hasExtras;
+  document.getElementById('p-extras-label').value     = extrasLabel;
+  document.getElementById('p-extras-required').checked = extrasRequired;
+  document.getElementById('p-extras-multiple').checked = extrasMultiple;
+  document.getElementById('extras-config').style.display = hasExtras ? 'block' : 'none';
+
+  if (extrasGroupId) {
+    document.getElementById('extras-source-group').checked = true;
+    document.getElementById('extras-own-panel').style.display   = 'none';
+    document.getElementById('extras-group-panel').style.display = 'block';
+  } else {
+    document.getElementById('extras-source-own').checked = true;
+    document.getElementById('extras-own-panel').style.display   = 'block';
+    document.getElementById('extras-group-panel').style.display = 'none';
+  }
+
+  // Populate shared group dropdown
+  _loadGroupsForSelect(extrasGroupId);
+
+  // Load per-product extras if editing
+  if (id && hasExtras && !extrasGroupId) {
+    loadProductExtras(id);
+  } else {
+    document.getElementById('extras-items-list').innerHTML = '';
+    document.getElementById('extras-count').textContent = 'Extras (0/25)';
+    document.getElementById('add-extra-form').style.display = 'none';
+  }
+}
+
+/* Toggle hasExtras section */
+document.getElementById('p-has-extras').addEventListener('change', function () {
+  document.getElementById('extras-config').style.display = this.checked ? 'block' : 'none';
+});
+
+/* Toggle own/group source */
+document.getElementById('extras-source-own').addEventListener('change', function () {
+  document.getElementById('extras-own-panel').style.display   = 'block';
+  document.getElementById('extras-group-panel').style.display = 'none';
+});
+document.getElementById('extras-source-group').addEventListener('change', function () {
+  document.getElementById('extras-own-panel').style.display   = 'none';
+  document.getElementById('extras-group-panel').style.display = 'block';
+  _loadGroupsForSelect(document.getElementById('p-extras-group-id').value);
+});
+
+/* Show/hide add-extra form */
+document.getElementById('btn-add-extra').addEventListener('click', function () {
+  const form = document.getElementById('add-extra-form');
+  form.style.display = form.style.display === 'none' ? 'flex' : 'none';
+  if (form.style.display === 'flex') document.getElementById('new-extra-name').focus();
+});
+document.getElementById('cancel-new-extra').addEventListener('click', function () {
+  document.getElementById('add-extra-form').style.display = 'none';
+});
+document.getElementById('save-new-extra').addEventListener('click', saveNewExtra);
+
+async function saveNewExtra() {
+  const productId = document.getElementById('edit-product-id').value;
+  if (!productId) { showToast('Save the product first before adding extras', 'error'); return; }
+
+  const name      = document.getElementById('new-extra-name').value.trim();
+  const price     = parseFloat(document.getElementById('new-extra-price').value) || 0;
+  const available = document.getElementById('new-extra-avail').checked;
+  const imgFile   = document.getElementById('new-extra-img').files[0];
+  if (!name) { showToast('Extra name is required', 'error'); return; }
+
+  const btn = document.getElementById('save-new-extra');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+
+  let imageUrl = '';
+  if (imgFile) {
+    try {
+      imageUrl = await _uploadExtraImage(imgFile, productId);
+    } catch (err) {
+      showToast('Image upload failed: ' + err.message, 'error');
+      btn.disabled = false; btn.textContent = 'Save Extra'; return;
+    }
+  }
+
+  try {
+    await adminAction('addExtra', { type: 'product', parentId: productId, name, price, imageUrl, available });
+    showToast('Extra added', 'success');
+    document.getElementById('add-extra-form').style.display = 'none';
+    document.getElementById('new-extra-name').value  = '';
+    document.getElementById('new-extra-price').value = '0';
+    document.getElementById('new-extra-img').value   = '';
+    loadProductExtras(productId);
+  } catch (err) {
+    showToast('Error: ' + err.message, 'error');
+  }
+  btn.disabled = false; btn.textContent = 'Save Extra';
+}
+
+async function loadProductExtras(productId) {
+  try {
+    const { extras } = await adminAction('getExtras', { type: 'product', parentId: productId });
+    renderExtrasList(extras, 'product', productId);
+  } catch (err) {
+    document.getElementById('extras-items-list').innerHTML =
+      `<p style="font-size:0.82rem;color:#C62828">Failed: ${escHtml(err.message)}</p>`;
+  }
+}
+
+function renderExtrasList(extras, type, parentId) {
+  const list  = document.getElementById('extras-items-list');
+  const count = document.getElementById('extras-count');
+  const addBtn = document.getElementById('btn-add-extra');
+  if (count) count.textContent = `Extras (${extras.length}/25)`;
+  if (addBtn) addBtn.disabled = extras.length >= 25;
+
+  if (!extras.length) {
+    list.innerHTML = '<p style="font-size:0.82rem;opacity:0.5;padding:8px 0">No extras yet. Add one below.</p>';
+    return;
+  }
+  list.innerHTML = extras.map((ex, idx) => `
+    <div class="extra-item-row" data-id="${escHtml(ex.id)}" data-idx="${idx}" draggable="true">
+      <span class="extra-drag-handle" title="Drag to reorder">⠿</span>
+      <img class="extra-thumb" src="${escHtml(ex.imageUrl || 'data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'36\' height=\'36\'%3E%3Crect width=\'36\' height=\'36\' rx=\'18\' fill=\'%23e8dece\'/%3E%3C/svg%3E')}" alt="">
+      <div class="extra-info">
+        <div class="extra-name">${escHtml(ex.name)}</div>
+        <div class="extra-price">${ex.price === 0 ? 'Free' : 'JOD ' + Number(ex.price).toFixed(2)}</div>
+      </div>
+      <div class="extra-item-actions">
+        <label class="toggle-switch extra-avail-toggle" title="Available">
+          <input type="checkbox" class="extra-avail-chk" data-id="${escHtml(ex.id)}" ${ex.available ? 'checked' : ''}>
+          <span class="toggle-slider"></span>
+        </label>
+        <button class="btn-delete-extra" data-id="${escHtml(ex.id)}" data-name="${escHtml(ex.name)}" title="Delete">×</button>
+      </div>
+    </div>
+  `).join('');
+
+  // Bind availability toggles
+  list.querySelectorAll('.extra-avail-chk').forEach(chk => {
+    chk.addEventListener('change', async () => {
+      try {
+        await adminAction('editExtra', { type, parentId, id: chk.dataset.id, available: chk.checked });
+        showToast(chk.checked ? 'Extra shown' : 'Extra hidden', 'success');
+      } catch (err) {
+        chk.checked = !chk.checked;
+        showToast('Error: ' + err.message, 'error');
+      }
+    });
+  });
+
+  // Bind delete buttons
+  list.querySelectorAll('.btn-delete-extra').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm(`Delete "${btn.dataset.name}"?`)) return;
+      try {
+        await adminAction('deleteExtra', { type, parentId, id: btn.dataset.id });
+        showToast('Extra deleted', 'success');
+        if (type === 'product') loadProductExtras(parentId);
+        else loadGroupExtras(parentId);
+      } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+      }
+    });
+  });
+
+  // Drag-to-reorder
+  _bindExtrasDrag(list, type, parentId);
+}
+
+function _bindExtrasDrag(list, type, parentId) {
+  let dragSrc = null;
+  list.querySelectorAll('.extra-item-row').forEach(row => {
+    row.addEventListener('dragstart', e => {
+      dragSrc = row;
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    row.addEventListener('dragover', e => {
+      e.preventDefault();
+      row.classList.add('drag-over');
+    });
+    row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+    row.addEventListener('drop', async e => {
+      e.preventDefault();
+      row.classList.remove('drag-over');
+      if (dragSrc === row) return;
+      const rows  = [...list.querySelectorAll('.extra-item-row')];
+      const from  = rows.indexOf(dragSrc);
+      const to    = rows.indexOf(row);
+      if (from < 0 || to < 0) return;
+      // Reorder in DOM
+      if (from < to) list.insertBefore(dragSrc, row.nextSibling);
+      else           list.insertBefore(dragSrc, row);
+      // Persist new order
+      const ids = [...list.querySelectorAll('.extra-item-row')].map(r => r.dataset.id);
+      try {
+        await adminAction('reorderExtras', { type, parentId, ids });
+      } catch (err) {
+        showToast('Reorder failed: ' + err.message, 'error');
+      }
+    });
+    row.addEventListener('dragend', () => {
+      list.querySelectorAll('.extra-item-row').forEach(r => r.classList.remove('drag-over'));
+    });
+  });
+}
+
+async function _loadGroupsForSelect(selectedId) {
+  const sel = document.getElementById('p-extras-group-id');
+  if (!sel) return;
+  try {
+    const { groups } = await adminAction('getExtraGroups', {});
+    sel.innerHTML = '<option value="">— Select a group —</option>' +
+      groups.map(g => `<option value="${escHtml(g.id)}" ${g.id === selectedId ? 'selected' : ''}>${escHtml(g.name)}</option>`).join('');
+  } catch (_) {}
+}
+
+async function _uploadExtraImage(file, parentId) {
+  const filename   = Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+  const storageRef = storage.ref('extras/' + parentId + '/' + filename);
+  const task       = storageRef.put(file);
+  return new Promise((resolve, reject) => {
+    task.on('state_changed', null,
+      err => reject(err),
+      async () => { resolve(await storageRef.getDownloadURL()); }
+    );
+  });
+}
+
+/* Extend product form save to include extras config */
+const _origProductForm = document.getElementById('product-form').onsubmit;
+document.getElementById('product-form').addEventListener('submit', () => {
+  // The original submit handler runs; we just need to patch the payload.
+  // Patching happens via the adminAction call inside the original handler.
+  // We override by monkey-patching adminAction for addProduct/editProduct once.
+});
+
+// Patch product save payload before it hits adminAction
+const _origAdminAction = adminAction;
+async function adminAction(action, payload = {}) {
+  if (action === 'addProduct' || action === 'editProduct') {
+    payload.hasExtras      = document.getElementById('p-has-extras')?.checked  || false;
+    payload.extrasLabel    = document.getElementById('p-extras-label')?.value.trim()  || '';
+    payload.extrasRequired = document.getElementById('p-extras-required')?.checked || false;
+    payload.extrasMultiple = document.getElementById('p-extras-multiple')?.checked || false;
+    const sourceOwn        = document.getElementById('extras-source-own')?.checked;
+    payload.extrasGroupId  = (sourceOwn || !payload.hasExtras)
+      ? null
+      : (document.getElementById('p-extras-group-id')?.value || null);
+  }
+  return _origAdminAction(action, payload);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   EXTRAS GROUPS TAB
+   ═══════════════════════════════════════════════════════════════ */
+async function loadExtrasGroupsTab() {
+  try {
+    const { groups } = await adminAction('getExtraGroups', {});
+    renderExtrasGroups(groups);
+  } catch (err) {
+    document.getElementById('extras-groups-list').innerHTML =
+      `<p style="color:#C62828;padding:16px">Failed: ${escHtml(err.message)}</p>`;
+  }
+}
+
+function renderExtrasGroups(groups) {
+  const list = document.getElementById('extras-groups-list');
+  if (!groups.length) {
+    list.innerHTML = '<p style="opacity:0.5;text-align:center;padding:32px">No groups yet. Create your first!</p>';
+    return;
+  }
+  list.innerHTML = groups.map(g => `
+    <div class="extra-group-card" data-gid="${escHtml(g.id)}">
+      <div class="extra-group-row">
+        <span class="extra-group-name">${escHtml(g.name)}</span>
+        <div class="extra-group-actions">
+          <button class="apc-btn apc-btn-edit" data-gid="${escHtml(g.id)}" data-gname="${escHtml(g.name)}">Rename</button>
+          <button class="apc-btn apc-btn-delete" data-gid="${escHtml(g.id)}" data-gname="${escHtml(g.name)}">Delete</button>
+        </div>
+        <span class="extra-group-chevron">▼</span>
+      </div>
+      <div class="extra-group-body">
+        <div style="padding-top:12px">
+          <div class="extras-panel-header">
+            <span class="extras-panel-count" id="gc-${escHtml(g.id)}-count">Extras (0/25)</span>
+            <button type="button" class="btn-add-extra" id="gc-${escHtml(g.id)}-addbtn">+ Add Extra</button>
+          </div>
+          <div class="extras-items-list" id="gc-${escHtml(g.id)}-list"></div>
+          <div class="add-extra-form" id="gc-${escHtml(g.id)}-form" style="display:none">
+            <input type="text" class="gc-new-name" placeholder="Extra name" maxlength="80">
+            <input type="number" class="gc-new-price" placeholder="Price (0=free)" min="0" max="100" step="0.01" value="0">
+            <input type="file" class="gc-new-img" accept="image/*">
+            <div class="extras-toggle-row">
+              <label class="toggle-switch" style="margin:0">
+                <input type="checkbox" class="gc-new-avail" checked>
+                <span class="toggle-slider"></span>
+              </label>
+              <span>Available</span>
+            </div>
+            <div class="add-extra-form-actions">
+              <button type="button" class="btn-save gc-save-btn">Save Extra</button>
+              <button type="button" class="btn-cancel gc-cancel-btn">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+
+  list.querySelectorAll('.extra-group-row').forEach(row => {
+    row.addEventListener('click', e => {
+      if (e.target.closest('button')) return;
+      const card  = row.closest('.extra-group-card');
+      const gid   = card.dataset.gid;
+      const isOpen = card.classList.toggle('open');
+      if (isOpen) loadGroupExtras(gid);
+    });
+  });
+
+  list.querySelectorAll('.apc-btn-edit').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const newName = prompt('New group name:', btn.dataset.gname);
+      if (!newName || !newName.trim()) return;
+      try {
+        await adminAction('editExtraGroup', { id: btn.dataset.gid, name: newName.trim() });
+        showToast('Group renamed', 'success');
+        loadExtrasGroupsTab();
+      } catch (err) { showToast('Error: ' + err.message, 'error'); }
+    });
+  });
+
+  list.querySelectorAll('.apc-btn-delete').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm(`Delete group "${btn.dataset.gname}" and all its extras?`)) return;
+      try {
+        await adminAction('deleteExtraGroup', { id: btn.dataset.gid });
+        showToast('Group deleted', 'success');
+        loadExtrasGroupsTab();
+      } catch (err) { showToast('Error: ' + err.message, 'error'); }
+    });
+  });
+
+  list.querySelectorAll('.extra-group-card').forEach(card => {
+    const gid  = card.dataset.gid;
+    const addBtn = card.querySelector(`#gc-${gid}-addbtn`);
+    const form   = card.querySelector(`#gc-${gid}-form`);
+    if (addBtn && form) {
+      addBtn.addEventListener('click', () => {
+        form.style.display = form.style.display === 'none' ? 'flex' : 'none';
+      });
+      card.querySelector('.gc-cancel-btn')?.addEventListener('click', () => { form.style.display = 'none'; });
+      card.querySelector('.gc-save-btn')?.addEventListener('click', () => saveGroupExtra(gid, card));
+    }
+  });
+}
+
+async function loadGroupExtras(groupId) {
+  const listEl  = document.getElementById(`gc-${groupId}-list`);
+  const countEl = document.getElementById(`gc-${groupId}-count`);
+  const addBtn  = document.getElementById(`gc-${groupId}-addbtn`);
+  if (!listEl) return;
+  listEl.innerHTML = '<p style="font-size:0.82rem;opacity:0.5;padding:8px 0">Loading…</p>';
+  try {
+    const { extras } = await adminAction('getExtras', { type: 'group', parentId: groupId });
+    if (countEl) countEl.textContent = `Extras (${extras.length}/25)`;
+    if (addBtn)  addBtn.disabled = extras.length >= 25;
+    renderGroupExtrasList(extras, groupId, listEl);
+  } catch (err) {
+    listEl.innerHTML = `<p style="font-size:0.82rem;color:#C62828">Failed: ${escHtml(err.message)}</p>`;
+  }
+}
+
+function renderGroupExtrasList(extras, groupId, listEl) {
+  if (!extras.length) {
+    listEl.innerHTML = '<p style="font-size:0.82rem;opacity:0.5;padding:8px 0">No extras yet.</p>';
+    return;
+  }
+  listEl.innerHTML = extras.map((ex, idx) => `
+    <div class="extra-item-row" data-id="${escHtml(ex.id)}" data-idx="${idx}" draggable="true">
+      <span class="extra-drag-handle">⠿</span>
+      <img class="extra-thumb" src="${escHtml(ex.imageUrl || '')}" alt="" onerror="this.style.display='none'">
+      <div class="extra-info">
+        <div class="extra-name">${escHtml(ex.name)}</div>
+        <div class="extra-price">${ex.price === 0 ? 'Free' : 'JOD ' + Number(ex.price).toFixed(2)}</div>
+      </div>
+      <div class="extra-item-actions">
+        <label class="toggle-switch extra-avail-toggle">
+          <input type="checkbox" class="extra-avail-chk" data-id="${escHtml(ex.id)}" ${ex.available ? 'checked' : ''}>
+          <span class="toggle-slider"></span>
+        </label>
+        <button class="btn-delete-extra" data-id="${escHtml(ex.id)}" data-name="${escHtml(ex.name)}">×</button>
+      </div>
+    </div>
+  `).join('');
+
+  listEl.querySelectorAll('.extra-avail-chk').forEach(chk => {
+    chk.addEventListener('change', async () => {
+      try {
+        await adminAction('editExtra', { type: 'group', parentId: groupId, id: chk.dataset.id, available: chk.checked });
+        showToast(chk.checked ? 'Extra shown' : 'Extra hidden', 'success');
+      } catch (err) { chk.checked = !chk.checked; showToast('Error: ' + err.message, 'error'); }
+    });
+  });
+  listEl.querySelectorAll('.btn-delete-extra').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm(`Delete "${btn.dataset.name}"?`)) return;
+      try {
+        await adminAction('deleteExtra', { type: 'group', parentId: groupId, id: btn.dataset.id });
+        showToast('Extra deleted', 'success');
+        loadGroupExtras(groupId);
+      } catch (err) { showToast('Error: ' + err.message, 'error'); }
+    });
+  });
+  _bindExtrasDrag(listEl, 'group', groupId);
+}
+
+async function saveGroupExtra(groupId, card) {
+  const nameEl  = card.querySelector('.gc-new-name');
+  const priceEl = card.querySelector('.gc-new-price');
+  const imgEl   = card.querySelector('.gc-new-img');
+  const availEl = card.querySelector('.gc-new-avail');
+  const saveBtn = card.querySelector('.gc-save-btn');
+  const name    = nameEl?.value.trim();
+  if (!name) { showToast('Extra name is required', 'error'); return; }
+  const price    = parseFloat(priceEl?.value) || 0;
+  const available = availEl?.checked !== false;
+  const imgFile  = imgEl?.files[0];
+  saveBtn.disabled = true; saveBtn.innerHTML = '<span class="spinner spinner-dark"></span>';
+  let imageUrl = '';
+  if (imgFile) {
+    try { imageUrl = await _uploadExtraImage(imgFile, 'group_' + groupId); }
+    catch (err) { showToast('Image upload failed: ' + err.message, 'error'); saveBtn.disabled = false; saveBtn.textContent = 'Save Extra'; return; }
+  }
+  try {
+    await adminAction('addExtra', { type: 'group', parentId: groupId, name, price, imageUrl, available });
+    showToast('Extra added', 'success');
+    if (nameEl)  nameEl.value  = '';
+    if (priceEl) priceEl.value = '0';
+    if (imgEl)   imgEl.value   = '';
+    const form = card.querySelector(`#gc-${groupId}-form`);
+    if (form) form.style.display = 'none';
+    loadGroupExtras(groupId);
+  } catch (err) { showToast('Error: ' + err.message, 'error'); }
+  saveBtn.disabled = false; saveBtn.textContent = 'Save Extra';
+}
+
+/* ─── New group form ────────────────────────────────────────── */
+document.getElementById('btn-new-group').addEventListener('click', () => {
+  const form = document.getElementById('new-group-form');
+  form.classList.toggle('visible');
+  if (form.classList.contains('visible')) document.getElementById('new-group-name').focus();
+});
+document.getElementById('cancel-new-group').addEventListener('click', () => {
+  document.getElementById('new-group-form').classList.remove('visible');
+});
+document.getElementById('save-new-group').addEventListener('click', async () => {
+  const name = document.getElementById('new-group-name').value.trim();
+  if (!name) { showToast('Group name is required', 'error'); return; }
+  const btn = document.getElementById('save-new-group');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner spinner-dark"></span>';
+  try {
+    await adminAction('addExtraGroup', { name });
+    showToast('Group created', 'success');
+    document.getElementById('new-group-name').value = '';
+    document.getElementById('new-group-form').classList.remove('visible');
+    loadExtrasGroupsTab();
+  } catch (err) { showToast('Error: ' + err.message, 'error'); }
+  btn.disabled = false; btn.textContent = 'Save';
+});

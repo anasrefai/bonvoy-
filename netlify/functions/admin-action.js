@@ -46,19 +46,25 @@ async function verifyAdmin(event, authInstance) {
 
 /* ─── Action handlers ───────────────────────────────────────── */
 async function addProduct(db, payload) {
-  const { name, category, description, price, imageUrl, available } = payload;
+  const { name, category, description, price, imageUrl, available,
+          hasExtras, extrasLabel, extrasRequired, extrasMultiple, extrasGroupId } = payload;
   if (!name || !CATEGORIES.includes(category) || typeof price !== 'number') {
     throw { code: 400, message: 'Invalid product data' };
   }
   const doc = await db.collection('products').add({
-    name:        stripHTML(String(name)).substring(0, 80),
+    name:           stripHTML(String(name)).substring(0, 80),
     category,
-    description: stripHTML(String(description || '')).substring(0, 300),
-    price:       parseFloat(Math.max(0.01, Math.min(999.99, price)).toFixed(3)),
-    imageUrl:    String(imageUrl || ''),
-    available:   available !== false,
-    createdAt:   FieldValue.serverTimestamp(),
-    updatedAt:   FieldValue.serverTimestamp(),
+    description:    stripHTML(String(description || '')).substring(0, 300),
+    price:          parseFloat(Math.max(0.01, Math.min(999.99, price)).toFixed(3)),
+    imageUrl:       String(imageUrl || ''),
+    available:      available !== false,
+    hasExtras:      hasExtras === true,
+    extrasLabel:    stripHTML(String(extrasLabel || '')).substring(0, 80),
+    extrasRequired: extrasRequired === true,
+    extrasMultiple: extrasMultiple === true,
+    extrasGroupId:  extrasGroupId ? String(extrasGroupId) : null,
+    createdAt:      FieldValue.serverTimestamp(),
+    updatedAt:      FieldValue.serverTimestamp(),
   });
   return { id: doc.id };
 }
@@ -67,12 +73,17 @@ async function editProduct(db, payload) {
   const { id, ...updates } = payload;
   if (!id) throw { code: 400, message: 'Product ID required' };
   const allowed = {};
-  if (updates.name        !== undefined) allowed.name        = stripHTML(String(updates.name)).substring(0, 80);
-  if (updates.category    !== undefined && CATEGORIES.includes(updates.category)) allowed.category = updates.category;
-  if (updates.description !== undefined) allowed.description = stripHTML(String(updates.description)).substring(0, 300);
-  if (updates.price       !== undefined) allowed.price       = parseFloat(Math.max(0.01, Math.min(999.99, updates.price)).toFixed(3));
-  if (updates.imageUrl    !== undefined) allowed.imageUrl    = String(updates.imageUrl);
-  if (updates.available   !== undefined) allowed.available   = Boolean(updates.available);
+  if (updates.name           !== undefined) allowed.name           = stripHTML(String(updates.name)).substring(0, 80);
+  if (updates.category       !== undefined && CATEGORIES.includes(updates.category)) allowed.category = updates.category;
+  if (updates.description    !== undefined) allowed.description    = stripHTML(String(updates.description)).substring(0, 300);
+  if (updates.price          !== undefined) allowed.price          = parseFloat(Math.max(0.01, Math.min(999.99, updates.price)).toFixed(3));
+  if (updates.imageUrl       !== undefined) allowed.imageUrl       = String(updates.imageUrl);
+  if (updates.available      !== undefined) allowed.available      = Boolean(updates.available);
+  if (updates.hasExtras      !== undefined) allowed.hasExtras      = Boolean(updates.hasExtras);
+  if (updates.extrasLabel    !== undefined) allowed.extrasLabel    = stripHTML(String(updates.extrasLabel)).substring(0, 80);
+  if (updates.extrasRequired !== undefined) allowed.extrasRequired = Boolean(updates.extrasRequired);
+  if (updates.extrasMultiple !== undefined) allowed.extrasMultiple = Boolean(updates.extrasMultiple);
+  if (updates.extrasGroupId  !== undefined) allowed.extrasGroupId  = updates.extrasGroupId ? String(updates.extrasGroupId) : null;
   allowed.updatedAt = FieldValue.serverTimestamp();
   await db.collection('products').doc(id).update(allowed);
   return { id };
@@ -179,6 +190,106 @@ async function getOrderById(db, payload) {
   };
 }
 
+/* ─── Extras helpers ────────────────────────────────────────── */
+function extrasCollRef(db, type, parentId) {
+  if (!parentId) throw { code: 400, message: 'parentId required' };
+  if (type === 'group') return db.collection('extraGroups').doc(parentId).collection('extras');
+  return db.collection('products').doc(parentId).collection('extras');
+}
+
+async function getExtras(db, payload) {
+  const { type = 'product', parentId } = payload;
+  const ref = extrasCollRef(db, type, parentId);
+  const snap = await ref.orderBy('order', 'asc').get();
+  return { extras: snap.docs.map(d => ({ id: d.id, ...d.data() })) };
+}
+
+async function addExtra(db, payload) {
+  const { type = 'product', parentId, name, price, imageUrl, available, order: ord } = payload;
+  if (!name) throw { code: 400, message: 'Extra name required' };
+  const ref = extrasCollRef(db, type, parentId);
+  // Auto-order: find max
+  const snap = await ref.orderBy('order', 'desc').limit(1).get();
+  const nextOrder = snap.empty ? 0 : (snap.docs[0].data().order || 0) + 1;
+  if (nextOrder >= 25) throw { code: 400, message: 'Maximum 25 extras reached' };
+  const doc = await ref.add({
+    name:      stripHTML(String(name)).substring(0, 80),
+    price:     parseFloat(Math.max(0, Math.min(100, parseFloat(price) || 0)).toFixed(3)),
+    imageUrl:  String(imageUrl || ''),
+    available: available !== false,
+    order:     ord !== undefined ? ord : nextOrder,
+    createdAt: FieldValue.serverTimestamp(),
+  });
+  return { id: doc.id };
+}
+
+async function editExtra(db, payload) {
+  const { type = 'product', parentId, id, ...updates } = payload;
+  if (!id) throw { code: 400, message: 'Extra ID required' };
+  const ref = extrasCollRef(db, type, parentId).doc(id);
+  const allowed = {};
+  if (updates.name      !== undefined) allowed.name      = stripHTML(String(updates.name)).substring(0, 80);
+  if (updates.price     !== undefined) allowed.price     = parseFloat(Math.max(0, Math.min(100, parseFloat(updates.price) || 0)).toFixed(3));
+  if (updates.imageUrl  !== undefined) allowed.imageUrl  = String(updates.imageUrl);
+  if (updates.available !== undefined) allowed.available = Boolean(updates.available);
+  if (updates.order     !== undefined) allowed.order     = parseInt(updates.order, 10);
+  await ref.update(allowed);
+  return { id };
+}
+
+async function deleteExtra(db, payload) {
+  const { type = 'product', parentId, id } = payload;
+  if (!id) throw { code: 400, message: 'Extra ID required' };
+  await extrasCollRef(db, type, parentId).doc(id).delete();
+  return { id };
+}
+
+async function reorderExtras(db, payload) {
+  const { type = 'product', parentId, ids } = payload;
+  if (!Array.isArray(ids)) throw { code: 400, message: 'ids array required' };
+  const ref = extrasCollRef(db, type, parentId);
+  const batch = db.batch();
+  ids.forEach((id, i) => { batch.update(ref.doc(id), { order: i }); });
+  await batch.commit();
+  return { updated: ids.length };
+}
+
+async function getExtraGroups(db) {
+  const snap = await db.collection('extraGroups').orderBy('createdAt', 'desc').get();
+  return { groups: snap.docs.map(d => ({ id: d.id, ...d.data() })) };
+}
+
+async function addExtraGroup(db, payload) {
+  const { name } = payload;
+  if (!name) throw { code: 400, message: 'Group name required' };
+  const doc = await db.collection('extraGroups').add({
+    name: stripHTML(String(name)).substring(0, 80),
+    createdAt: FieldValue.serverTimestamp(),
+  });
+  return { id: doc.id };
+}
+
+async function editExtraGroup(db, payload) {
+  const { id, name } = payload;
+  if (!id) throw { code: 400, message: 'Group ID required' };
+  await db.collection('extraGroups').doc(id).update({
+    name: stripHTML(String(name || '')).substring(0, 80),
+  });
+  return { id };
+}
+
+async function deleteExtraGroup(db, payload) {
+  const { id } = payload;
+  if (!id) throw { code: 400, message: 'Group ID required' };
+  // Delete all extras in the group first
+  const extrasSnap = await db.collection('extraGroups').doc(id).collection('extras').get();
+  const batch = db.batch();
+  extrasSnap.docs.forEach(d => batch.delete(d.ref));
+  batch.delete(db.collection('extraGroups').doc(id));
+  await batch.commit();
+  return { id };
+}
+
 /* ─── Main handler ──────────────────────────────────────────── */
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
@@ -212,6 +323,15 @@ exports.handler = async (event) => {
       case 'getAdminProducts':  result = await getAdminProducts(db); break;
       case 'getOrders':         result = await getOrders(db, payload); break;
       case 'getOrderById':      result = await getOrderById(db, payload); break;
+      case 'getExtras':         result = await getExtras(db, payload); break;
+      case 'addExtra':          result = await addExtra(db, payload); break;
+      case 'editExtra':         result = await editExtra(db, payload); break;
+      case 'deleteExtra':       result = await deleteExtra(db, payload); break;
+      case 'reorderExtras':     result = await reorderExtras(db, payload); break;
+      case 'getExtraGroups':    result = await getExtraGroups(db); break;
+      case 'addExtraGroup':     result = await addExtraGroup(db, payload); break;
+      case 'editExtraGroup':    result = await editExtraGroup(db, payload); break;
+      case 'deleteExtraGroup':  result = await deleteExtraGroup(db, payload); break;
       default: return respond(400, { error: 'Unknown action' });
     }
     return respond(200, { ok: true, data: result });

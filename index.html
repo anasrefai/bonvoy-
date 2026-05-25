@@ -11,7 +11,7 @@
   <link rel="preconnect" href="https://www.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
 
-  <link rel="stylesheet" href="css/style.css?v=4">
+  <link rel="stylesheet" href="css/style.css?v=5">
 </head>
 <body>
 
@@ -353,6 +353,30 @@
   </div>
 </aside>
 
+<!-- ═══ PRODUCT DETAIL MODAL ══════════════════════════════════════ -->
+<div class="pm-overlay" id="pm-overlay" role="dialog" aria-modal="true" aria-label="Product details">
+  <div class="pm-card" id="pm-card">
+    <button class="pm-close" id="pm-close" aria-label="Close">✕</button>
+    <img class="pm-img" id="pm-img" src="" alt="" width="520" height="390" loading="lazy">
+    <div class="pm-body">
+      <span class="pm-category" id="pm-category"></span>
+      <h2 class="pm-name" id="pm-name"></h2>
+      <p class="pm-desc" id="pm-desc"></p>
+      <p class="pm-price" id="pm-price"></p>
+
+      <div class="pm-extras" id="pm-extras-section" style="display:none">
+        <div class="pm-extras-label" id="pm-extras-label-text"></div>
+        <div class="pm-extras-list" id="pm-extras-list"></div>
+        <div class="pm-required-hint" id="pm-required-hint" style="display:none">
+          Please choose an option to continue
+        </div>
+      </div>
+
+      <button class="btn btn-primary pm-add-btn" id="pm-add-btn">Add to Cart</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ ORDER MODAL ════════════════════════════════════════════════ -->
 <div class="modal-overlay" id="order-modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
   <div class="modal-card" id="modal-card">
@@ -469,6 +493,7 @@
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js" defer></script>
 <script src="js/firebase-config.js" defer></script>
 <script src="js/main.js" defer></script>
+<script src="js/product-modal.js" defer></script>
 
 <!-- Animation JS -->
 <script>

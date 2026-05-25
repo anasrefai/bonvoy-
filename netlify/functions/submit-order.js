@@ -116,12 +116,22 @@ exports.handler = async (event) => {
   if (!Array.isArray(items) || items.length < 1 || items.length > 50) {
     errors.items = 'Cart must have 1–50 items';
   } else {
-    for (const item of items) {
+    outer: for (const item of items) {
       if (!item.id || typeof item.name !== 'string' ||
           !Number.isInteger(item.qty) || item.qty < 1 || item.qty > 99 ||
           typeof item.price !== 'number' || item.price < 0.01 || item.price > 999) {
-        errors.items = 'Invalid item in cart';
-        break;
+        errors.items = 'Invalid item in cart'; break;
+      }
+      if (item.extras !== undefined) {
+        if (!Array.isArray(item.extras) || item.extras.length > 25) {
+          errors.items = 'Invalid extras'; break;
+        }
+        for (const ex of item.extras) {
+          if (typeof ex.name !== 'string' || ex.name.length > 80 ||
+              typeof ex.price !== 'number' || ex.price < 0 || ex.price > 100) {
+            errors.items = 'Invalid extras data'; break outer;
+          }
+        }
       }
     }
   }
@@ -148,7 +158,12 @@ exports.handler = async (event) => {
     }
   } catch (_) {}
 
-  const subtotal = items.reduce((sum, i) => sum + i.price * i.qty, 0);
+  const subtotal = items.reduce((sum, i) => {
+    const extrasPerUnit = (i.extras || []).reduce((s, ex) => s + (ex.price || 0), 0);
+    return sum + (i.price + extrasPerUnit) * i.qty;
+  }, 0);
+  const extrasGrandTotal = items.reduce((sum, i) =>
+    sum + (i.extras || []).reduce((s, ex) => s + (ex.price || 0), 0) * i.qty, 0);
   const total    = parseFloat((subtotal + deliveryFee).toFixed(3));
 
   // 5. Write to Firestore
@@ -159,13 +174,23 @@ exports.handler = async (event) => {
     address,
     locationMode,
     coordinates,
-    items: items.map(i => ({
-      id:    String(i.id),
-      name:  stripHTML(String(i.name)),
-      qty:   i.qty,
-      price: i.price,
-    })),
-    subtotal:     parseFloat(subtotal.toFixed(3)),
+    items: items.map(i => {
+      const extras = (i.extras || []).map(ex => ({
+        name:  stripHTML(String(ex.name)).substring(0, 80),
+        price: parseFloat(Math.max(0, Math.min(100, ex.price || 0)).toFixed(3)),
+      }));
+      const extrasTotal = parseFloat((extras.reduce((s, ex) => s + ex.price, 0) * i.qty).toFixed(3));
+      return {
+        id:          String(i.id),
+        name:        stripHTML(String(i.name)),
+        qty:         i.qty,
+        price:       i.price,
+        extras,
+        extrasTotal,
+      };
+    }),
+    subtotal:         parseFloat(subtotal.toFixed(3)),
+    extrasGrandTotal: parseFloat(extrasGrandTotal.toFixed(3)),
     deliveryFee,
     total,
     deliveryDate,
