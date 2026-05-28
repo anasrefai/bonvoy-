@@ -20,7 +20,7 @@ function getAdmin() {
 
 /* ─── Constants ────────────────────────────────────────────── */
 const ALLOWED_ORIGINS = new Set([
-  'https://bonvoy-cookies.netlify.app',
+  'https://bonvoy-cookie.netlify.app',
   'http://localhost:8888',
   'http://localhost:3000',
   // Additional origins from env var (e.g. custom domain): ALLOWED_ORIGINS=https://example.com
