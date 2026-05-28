@@ -11,17 +11,19 @@ const CITIES        = ['Amman','Salt','Zarqa','Jerash','Irbid','Madaba','Balqaa'
 let ordersLastId     = null;
 let allOrdersLoaded  = false;
 let ordersUnsubscribe = null;
+let _dashboardReady  = false;
 
 /* ══════════════════════════════════════════════════════════════
-   AUTH GUARD
+   AUTH GUARD — all data fetching happens inside this callback
    ══════════════════════════════════════════════════════════════ */
 firebase.auth().onAuthStateChanged(user => {
   if (!user) { window.location.replace('/admin/login.html'); return; }
+  if (_dashboardReady) return; // onAuthStateChanged can fire more than once; init only once
 
   user.getIdToken().then(token => {
     window._adminToken = token;
+    _dashboardReady = true;
 
-    // Show email in UI
     const email = user.email || '';
     document.getElementById('sidebar-email').textContent = email;
     document.getElementById('topbar-email').textContent  = email;
@@ -66,6 +68,7 @@ async function adminAction(action, payload = {}) {
 function initDashboard() {
   bindTabs();
   bindLogout();
+  bindSettingsButtons();
   loadOrdersTab();
   loadProductsTab();
   loadSettingsTab();
@@ -579,6 +582,11 @@ async function confirmDeleteProduct(id, name) {
 /* ═══════════════════════════════════════════════════════════════
    SETTINGS TAB
    ═══════════════════════════════════════════════════════════════ */
+function bindSettingsButtons() {
+  document.getElementById('btn-save-fees').addEventListener('click', saveDeliveryFees);
+  document.getElementById('btn-save-store').addEventListener('click', saveStoreStatus);
+}
+
 async function loadSettingsTab() {
   // Load delivery fees
   try {
@@ -601,9 +609,6 @@ async function loadSettingsTab() {
     }
   } catch (_) {}
 
-  // Bind save buttons
-  document.getElementById('btn-save-fees').addEventListener('click', saveDeliveryFees);
-  document.getElementById('btn-save-store').addEventListener('click', saveStoreStatus);
 }
 
 async function saveDeliveryFees() {
