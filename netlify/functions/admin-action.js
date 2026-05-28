@@ -296,7 +296,13 @@ exports.handler = async (event) => {
   }
   if (event.httpMethod !== 'POST') return respond(405, { error: 'Method not allowed' });
 
-  const { db, auth } = initFirebase();
+  let db, auth;
+  try {
+    ({ db, auth } = initFirebase());
+  } catch (err) {
+    console.error('Firebase init error:', err);
+    return respond(500, { error: 'Server configuration error' });
+  }
 
   try {
     await verifyAdmin(event, auth);
