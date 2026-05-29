@@ -338,10 +338,9 @@ async function updateStats() {
   try {
     const today = new Date(); today.setHours(0,0,0,0);
     const snap  = await db.collection('orders').orderBy('createdAt','desc').limit(200).get();
-    let todayCount = 0, pendingCount = 0, todayRev = 0, allRev = 0;
+    let todayCount = 0, pendingCount = 0, todayRev = 0;
     snap.docs.forEach(d => {
       const data = d.data();
-      allRev += data.total || 0;
       const ts = data.createdAt?.toDate?.();
       if (ts && ts >= today) { todayCount++; todayRev += data.total || 0; }
       if (data.status === 'pending') pendingCount++;
@@ -349,8 +348,14 @@ async function updateStats() {
     document.getElementById('stat-today').textContent         = todayCount;
     document.getElementById('stat-pending').textContent       = pendingCount;
     document.getElementById('stat-revenue-today').textContent = 'JOD ' + todayRev.toFixed(2);
-    document.getElementById('stat-revenue-all').textContent   = 'JOD ' + allRev.toFixed(2);
     if (pendingCount > 0) document.getElementById('stat-pending-sub').textContent = '⚠️ needs attention';
+
+    // All-time revenue from a running counter accurate at any scale.
+    // getStats backfills from all orders on first run, then increments per order.
+    adminAction('getStats', {}).then(r => {
+      if (r && r.totalRevenue !== undefined)
+        document.getElementById('stat-revenue-all').textContent = 'JOD ' + parseFloat(r.totalRevenue).toFixed(2);
+    }).catch(() => {});
   } catch (_) {}
 }
 

@@ -289,6 +289,33 @@ async function deleteExtraGroup(db, payload) {
   return { id };
 }
 
+/* ─── Stats ─────────────────────────────────────────────────── */
+async function getStats(db) {
+  const statsRef = db.collection('stats').doc('revenue');
+  const snap = await statsRef.get();
+
+  if (snap.exists && snap.data().totalRevenue !== undefined) {
+    return { totalRevenue: snap.data().totalRevenue };
+  }
+
+  // First call: paginate through ALL orders to build the initial counter
+  let total = 0;
+  let lastDoc = null;
+  do {
+    let q = db.collection('orders').orderBy('createdAt', 'asc').limit(500);
+    if (lastDoc) q = q.startAfter(lastDoc);
+    const batch = await q.get();
+    if (batch.empty) break;
+    batch.docs.forEach(d => { total += (d.data().total || 0); });
+    lastDoc = batch.docs[batch.docs.length - 1];
+    if (batch.size < 500) break;
+  } while (true);
+
+  total = parseFloat(total.toFixed(3));
+  await statsRef.set({ totalRevenue: total, backfilledAt: FieldValue.serverTimestamp() });
+  return { totalRevenue: total };
+}
+
 /* ─── Main handler ──────────────────────────────────────────── */
 exports.handler = async (event) => {
   if (event.httpMethod === 'OPTIONS') {
@@ -337,6 +364,7 @@ exports.handler = async (event) => {
       case 'addExtraGroup':     result = await addExtraGroup(db, payload); break;
       case 'editExtraGroup':    result = await editExtraGroup(db, payload); break;
       case 'deleteExtraGroup':  result = await deleteExtraGroup(db, payload); break;
+      case 'getStats':          result = await getStats(db); break;
       default: return respond(400, { error: 'Unknown action' });
     }
     return respond(200, { ok: true, data: result });

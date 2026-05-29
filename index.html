@@ -299,7 +299,7 @@
           </div>
           <div class="about-detail">
             <span class="icon">🚀</span>
-            <span>Delivery: Amman JOD 0.50 · All Jordan JOD 2.50</span>
+            <span id="about-delivery-fee">Delivery: Amman JOD 0.50 · All Jordan JOD 2.50</span>
           </div>
         </div>
       </div>
@@ -559,6 +559,69 @@
   });
 
 })();
+</script>
+
+<script>
+/* ── Task 6: Restore order form after successful submission ───────────
+   showSuccessScreen() in main.js replaces #modal-card innerHTML.
+   On next modal open the form would be missing. This observer restores
+   the original HTML and rebinds all event listeners before the user
+   sees the modal again. ──────────────────────────────────────────── */
+(function () {
+  'use strict';
+  var modal = document.getElementById('order-modal');
+  var card  = document.getElementById('modal-card');
+  if (!modal || !card) return;
+  var originalHTML = card.innerHTML; // static HTML, captured before main.js runs
+
+  new MutationObserver(function () {
+    // Modal just became OPEN and form was replaced by success screen
+    if (modal.classList.contains('open') && !card.querySelector('#order-form')) {
+      card.innerHTML = originalHTML;
+      // Rebind listeners (functions are global declarations in main.js)
+      var fCity = document.getElementById('f-city');
+      if (fCity && typeof onCityChange === 'function')
+        fCity.addEventListener('change', onCityChange);
+      var btnDetect = document.getElementById('btn-detect');
+      if (btnDetect && typeof detectLocation === 'function')
+        btnDetect.addEventListener('click', detectLocation);
+      var toManual = document.getElementById('switch-to-manual');
+      if (toManual && typeof switchToManual === 'function')
+        toManual.addEventListener('click', switchToManual);
+      var toGps = document.getElementById('switch-to-gps');
+      if (toGps && typeof switchToGPS === 'function')
+        toGps.addEventListener('click', switchToGPS);
+      var form = document.getElementById('order-form');
+      if (form && typeof submitOrder === 'function')
+        form.addEventListener('submit', submitOrder);
+      // Reset GPS cached state so fresh detection can happen
+      try { detectedLocation = null; } catch (e) {}
+      // Re-apply date min/max
+      if (typeof setDateLimits === 'function') setDateLimits();
+    }
+  }).observe(modal, { attributes: true, attributeFilter: ['class'] });
+})();
+
+/* ── Task 7: Dynamic delivery fees in About section ─────────────────
+   Reads the delivery_fees Firestore doc (same source as the order form)
+   and updates the About text so it never goes stale. ─────────────── */
+document.addEventListener('DOMContentLoaded', function () {
+  var el = document.getElementById('about-delivery-fee');
+  if (!el || typeof db === 'undefined') return;
+  db.collection('settings').doc('delivery_fees').get().then(function (doc) {
+    if (!doc.exists) return;
+    var fees = doc.data();
+    var amman = fees.Amman !== undefined ? parseFloat(fees.Amman).toFixed(2) : null;
+    var others = ['Salt', 'Zarqa', 'Jerash', 'Irbid', 'Madaba', 'Balqaa']
+      .map(function (c) { return fees[c] !== undefined ? parseFloat(fees[c]) : null; })
+      .filter(function (f) { return f !== null; });
+    var maxOther = others.length ? Math.max.apply(null, others) : null;
+    if (amman !== null && maxOther !== null)
+      el.textContent = 'Delivery: Amman JOD ' + amman + ' · All Jordan JOD ' + maxOther.toFixed(2);
+    else if (amman !== null)
+      el.textContent = 'Delivery: Amman JOD ' + amman;
+  }).catch(function () {}); // silent fail — static fallback text remains
+});
 </script>
 </body>
 </html>

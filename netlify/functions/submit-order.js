@@ -1,21 +1,22 @@
 'use strict';
 
-const { initializeApp, getApps, cert } = require('firebase-admin/app');
-const { getFirestore, FieldValue }     = require('firebase-admin/firestore');
+const admin  = require('firebase-admin');
 const crypto = require('crypto');
+
+const FieldValue = admin.firestore.FieldValue;
 
 /* ─── Firebase Admin init (lazy singleton) ─────────────────── */
 function getAdmin() {
-  if (!getApps().length) {
-    initializeApp({
-      credential: cert({
-        projectId:    process.env.FIREBASE_PROJECT_ID,
-        clientEmail:  process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+  if (!admin.apps.length) {
+    admin.initializeApp({
+      credential: admin.credential.cert({
+        projectId:   process.env.FIREBASE_PROJECT_ID,
+        clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
+        privateKey:  process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
       }),
     });
   }
-  return getFirestore();
+  return admin.firestore();
 }
 
 /* ─── Constants ────────────────────────────────────────────── */
@@ -23,28 +24,35 @@ const ALLOWED_ORIGINS = new Set([
   'https://bonvoy-cookie.netlify.app',
   'http://localhost:8888',
   'http://localhost:3000',
-  // Additional origins from env var (e.g. custom domain): ALLOWED_ORIGINS=https://example.com
   ...(process.env.ALLOWED_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean),
 ]);
 const CITIES = ['Amman','Salt','Zarqa','Jerash','Irbid','Madaba','Balqaa'];
 const NAME_RE  = /^[؀-ۿa-zA-Z\s'\-]{2,80}$/;
 const PHONE_RE = /^(07[789]\d{7}|(\+9627[789]\d{7}))$/;
 
-/* ─── In-memory rate limit map (resets on cold start) ─────── */
-const rateLimitMap = new Map();
+/* ─── Firestore-backed rate limit ──────────────────────────── */
 const RATE_MAX    = 5;
-const RATE_WINDOW = 10 * 60 * 1000; // 10 minutes
+const RATE_WINDOW = 10 * 60 * 1000; // 10 minutes in ms
 
-function checkRateLimit(ip) {
-  const now    = Date.now();
-  const bucket = rateLimitMap.get(ip);
-  if (!bucket || now - bucket.windowStart > RATE_WINDOW) {
-    rateLimitMap.set(ip, { count: 1, windowStart: now });
+async function checkRateLimit(db, ipHash) {
+  const ref = db.collection('rateLimits').doc(ipHash);
+  const now = Date.now();
+
+  return db.runTransaction(async (txn) => {
+    const snap = await txn.get(ref);
+
+    if (!snap.exists || snap.data().resetAt.toMillis() <= now) {
+      // New IP or expired window — reset counter
+      txn.set(ref, { count: 1, resetAt: new Date(now + RATE_WINDOW) });
+      return true;
+    }
+
+    const { count } = snap.data();
+    if (count >= RATE_MAX) return false;
+
+    txn.update(ref, { count: count + 1 });
     return true;
-  }
-  if (bucket.count >= RATE_MAX) return false;
-  bucket.count++;
-  return true;
+  });
 }
 
 /* ─── Helpers ──────────────────────────────────────────────── */
@@ -66,7 +74,6 @@ exports.handler = async (event) => {
   // CORS check
   const origin = event.headers['origin'] || '';
   if (!ALLOWED_ORIGINS.has(origin)) {
-    // Allow missing origin (server-to-server / local file) in dev
     if (origin && !origin.includes('localhost')) {
       return respond(403, { error: 'Forbidden' });
     }
@@ -75,22 +82,37 @@ exports.handler = async (event) => {
 
   // IP extraction
   const ip = (event.headers['x-forwarded-for'] || event.headers['client-ip'] || 'unknown').split(',')[0].trim();
+  const ipHash = sha256(ip);
 
   let body;
   try { body = JSON.parse(event.body || '{}'); }
   catch (_) { return respond(400, { error: 'Invalid JSON' }, corsHeaders); }
 
   // 1. Honeypot
-  if ((body._hp || '') !== '') return respond(200, { ok: true }, corsHeaders); // silent pass to fool bots
+  if ((body._hp || '') !== '') return respond(200, { ok: true }, corsHeaders);
 
-  // 2. Rate limit
-  if (!checkRateLimit(sha256(ip))) {
-    return respond(429, { error: 'Too many orders. Please wait before trying again.' }, {
-      ...corsHeaders, 'Retry-After': '600',
-    });
+  // 2. Initialize Firestore (needed for rate limit and order write)
+  let db;
+  try { db = getAdmin(); }
+  catch (err) {
+    console.error('Firebase init error:', err);
+    return respond(500, { error: 'Server configuration error' }, corsHeaders);
   }
 
-  // 3. Validate
+  // 3. Rate limit (Firestore-backed, survives cold starts)
+  try {
+    const allowed = await checkRateLimit(db, ipHash);
+    if (!allowed) {
+      return respond(429, { error: 'Too many orders. Please wait before trying again.' }, {
+        ...corsHeaders, 'Retry-After': '600',
+      });
+    }
+  } catch (err) {
+    // If rate limit check fails, log and allow through — don't block real orders
+    console.error('Rate limit check error:', err);
+  }
+
+  // 4. Validate
   const errors = {};
   const name = stripHTML(String(body.name || ''));
   if (!NAME_RE.test(name)) errors.name = 'Name must be 2–80 characters, letters only';
@@ -148,8 +170,7 @@ exports.handler = async (event) => {
 
   if (Object.keys(errors).length > 0) return respond(400, { errors }, corsHeaders);
 
-  // 4. Server-side fee recalculation
-  const db = getAdmin();
+  // 5. Server-side fee recalculation
   let deliveryFee = 2.50; // fallback
   try {
     const feeSnap = await db.collection('settings').doc('delivery_fees').get();
@@ -164,9 +185,9 @@ exports.handler = async (event) => {
   }, 0);
   const extrasGrandTotal = items.reduce((sum, i) =>
     sum + (i.extras || []).reduce((s, ex) => s + (ex.price || 0), 0) * i.qty, 0);
-  const total    = parseFloat((subtotal + deliveryFee).toFixed(3));
+  const total = parseFloat((subtotal + deliveryFee).toFixed(3));
 
-  // 5. Write to Firestore
+  // 6. Write to Firestore
   const doc = await db.collection('orders').add({
     customerName:  name,
     phone,
@@ -195,11 +216,17 @@ exports.handler = async (event) => {
     total,
     deliveryDate,
     notes,
-    status:       'pending',
-    createdAt:    FieldValue.serverTimestamp(),
-    updatedAt:    FieldValue.serverTimestamp(),
-    ipHash:       sha256(ip),
+    status:    'pending',
+    createdAt: FieldValue.serverTimestamp(),
+    updatedAt: FieldValue.serverTimestamp(),
+    ipHash,
   });
+
+  // Increment running all-time revenue counter (fire-and-forget)
+  db.collection('stats').doc('revenue').set(
+    { totalRevenue: FieldValue.increment(total) },
+    { merge: true }
+  ).catch(err => console.error('Stats increment error:', err));
 
   return respond(201, { orderId: doc.id, total, estimatedFee: deliveryFee }, corsHeaders);
 };
