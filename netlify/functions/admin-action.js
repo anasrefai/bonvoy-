@@ -291,29 +291,16 @@ async function deleteExtraGroup(db, payload) {
 
 /* ─── Stats ─────────────────────────────────────────────────── */
 async function getStats(db) {
-  const statsRef = db.collection('stats').doc('revenue');
-  const snap = await statsRef.get();
-
-  if (snap.exists && snap.data().totalRevenue !== undefined) {
-    return { totalRevenue: snap.data().totalRevenue };
+  try {
+    const snap = await db.collection('stats').doc('revenue').get();
+    const totalRevenue = (snap.exists && snap.data().totalRevenue !== undefined)
+      ? snap.data().totalRevenue
+      : 0;
+    return { totalRevenue };
+  } catch (err) {
+    console.error('getStats error:', err);
+    return { totalRevenue: 0 };
   }
-
-  // First call: paginate through ALL orders to build the initial counter
-  let total = 0;
-  let lastDoc = null;
-  do {
-    let q = db.collection('orders').orderBy('createdAt', 'asc').limit(500);
-    if (lastDoc) q = q.startAfter(lastDoc);
-    const batch = await q.get();
-    if (batch.empty) break;
-    batch.docs.forEach(d => { total += (d.data().total || 0); });
-    lastDoc = batch.docs[batch.docs.length - 1];
-    if (batch.size < 500) break;
-  } while (true);
-
-  total = parseFloat(total.toFixed(3));
-  await statsRef.set({ totalRevenue: total, backfilledAt: FieldValue.serverTimestamp() });
-  return { totalRevenue: total };
 }
 
 /* ─── Main handler ──────────────────────────────────────────── */

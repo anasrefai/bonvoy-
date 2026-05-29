@@ -3,8 +3,6 @@
 const admin  = require('firebase-admin');
 const crypto = require('crypto');
 
-const FieldValue = admin.firestore.FieldValue;
-
 /* ─── Firebase Admin init (lazy singleton) ─────────────────── */
 function getAdmin() {
   if (!admin.apps.length) {
@@ -16,7 +14,10 @@ function getAdmin() {
       }),
     });
   }
-  return admin.firestore();
+  return {
+    db:         admin.firestore(),
+    FieldValue: admin.firestore.FieldValue,
+  };
 }
 
 /* ─── Constants ────────────────────────────────────────────── */
@@ -92,8 +93,8 @@ exports.handler = async (event) => {
   if ((body._hp || '') !== '') return respond(200, { ok: true }, corsHeaders);
 
   // 2. Initialize Firestore (needed for rate limit and order write)
-  let db;
-  try { db = getAdmin(); }
+  let db, FieldValue;
+  try { ({ db, FieldValue } = getAdmin()); }
   catch (err) {
     console.error('Firebase init error:', err);
     return respond(500, { error: 'Server configuration error' }, corsHeaders);
