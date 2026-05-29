@@ -1,2 +1,14 @@
 # Local Netlify folder
 .netlify
+
+# Environment variables — NEVER commit these
+.env
+.env.local
+.env.*
+
+# Node modules
+node_modules/
+
+# Temp files
+fix-env.js
+fix-env2.js
