@@ -305,6 +305,9 @@ async function getStats(db) {
 
 /* ─── Main handler ──────────────────────────────────────────── */
 exports.handler = async (event) => {
+  // Top-level safety net — prevents any unhandled rejection from crashing the process
+  try {
+
   if (event.httpMethod === 'OPTIONS') {
     return { statusCode: 200, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Methods': 'POST', 'Access-Control-Allow-Headers': 'Content-Type,Authorization' }, body: '' };
   }
@@ -356,8 +359,18 @@ exports.handler = async (event) => {
     }
     return respond(200, { ok: true, data: result });
   } catch (err) {
-    if (err.code) return respond(err.code, { error: err.message });
-    console.error('admin-action error:', err);
+    // Only use err.code as HTTP status if it is actually a valid HTTP status code (100–599).
+    // Firebase/gRPC errors have small numeric codes (e.g. 9 = FAILED_PRECONDITION) that
+    // are NOT valid HTTP codes — using them causes RangeError: Invalid status code.
+    const httpCode = (Number.isInteger(err.code) && err.code >= 100 && err.code <= 599)
+      ? err.code : null;
+    if (httpCode) return respond(httpCode, { error: err.message });
+    console.error(`admin-action [${action}] error code=${err.code}:`, err.message, err);
     return respond(500, { error: 'Internal server error' });
+  }
+
+  } catch (err) {
+    console.error('Unhandled admin-action error:', err);
+    return { statusCode: 500, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ error: 'Internal server error' }) };
   }
 };
