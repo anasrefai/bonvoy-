@@ -72,14 +72,12 @@ function respond(statusCode, body, headers = {}) {
 exports.handler = async (event) => {
   if (event.httpMethod !== 'POST') return respond(405, { error: 'Method not allowed' });
 
-  // CORS check
+  // CORS check — reject any request whose Origin is not in the allowlist (includes no-origin)
   const origin = event.headers['origin'] || '';
   if (!ALLOWED_ORIGINS.has(origin)) {
-    if (origin && !origin.includes('localhost')) {
-      return respond(403, { error: 'Forbidden' });
-    }
+    return respond(403, { error: 'Forbidden' });
   }
-  const corsHeaders = origin ? { 'Access-Control-Allow-Origin': origin } : {};
+  const corsHeaders = { 'Access-Control-Allow-Origin': origin };
 
   // IP extraction
   const ip = (event.headers['x-forwarded-for'] || event.headers['client-ip'] || 'unknown').split(',')[0].trim();

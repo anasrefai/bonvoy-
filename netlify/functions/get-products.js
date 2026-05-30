@@ -1,19 +1,18 @@
 'use strict';
 
-const { initializeApp, getApps, cert } = require('firebase-admin/app');
-const { getFirestore } = require('firebase-admin/firestore');
+const admin = require('firebase-admin');
 
 function getAdmin() {
-  if (!getApps().length) {
-    initializeApp({
-      credential: cert({
+  if (!admin.apps.length) {
+    admin.initializeApp({
+      credential: admin.credential.cert({
         projectId:   process.env.FIREBASE_PROJECT_ID,
         clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-        privateKey: process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
+        privateKey:  process.env.FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
       }),
     });
   }
-  return getFirestore();
+  return admin.firestore();
 }
 
 const VALID_CATEGORIES = ['all','Brownies','Cakes','Cookies','Specials'];

@@ -33,7 +33,7 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    match /rate_limits/{id} {
+    match /rateLimits/{id} {
       allow read, write: if false;
     }
 
