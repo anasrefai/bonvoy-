@@ -24,13 +24,24 @@
     Referrer-Policy = "strict-origin-when-cross-origin"
     Permissions-Policy = "geolocation=(self), camera=(), microphone=()"
     Strict-Transport-Security = "max-age=31536000; includeSubDomains"
-    Content-Security-Policy = "default-src 'self'; script-src 'self' https://www.gstatic.com https://apis.google.com https://fonts.googleapis.com 'unsafe-inline'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' https://firebasestorage.googleapis.com https://placehold.co data: blob:; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://nominatim.openstreetmap.org https://identitytoolkit.googleapis.com https://www.gstatic.com; frame-src https://bonvoy-d2b12.firebaseapp.com;"
+    # unsafe-inline required: Firebase compat SDK uses dynamic code; inline <script> blocks on page
+    Content-Security-Policy = "default-src 'self'; script-src 'self' https://www.gstatic.com https://apis.google.com https://fonts.googleapis.com 'unsafe-inline'; style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' https://firebasestorage.googleapis.com https://placehold.co data: blob:; connect-src 'self' https://*.firebaseio.com https://*.googleapis.com https://nominatim.openstreetmap.org https://identitytoolkit.googleapis.com https://www.gstatic.com; frame-src https://bonvoy-d2b12.firebaseapp.com; frame-ancestors 'self'; form-action 'self';"
+
+[[headers]]
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "no-cache, no-store, must-revalidate"
 
 [[headers]]
   for = "/admin/*"
   [headers.values]
     Cache-Control = "no-store, no-cache, must-revalidate"
     X-Robots-Tag = "noindex, nofollow"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
 
 [[headers]]
   for = "/*.js"
@@ -41,3 +52,8 @@
   for = "/*.css"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/.netlify/functions/*"
+  [headers.values]
+    Cache-Control = "no-store"

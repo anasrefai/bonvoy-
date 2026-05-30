@@ -488,10 +488,10 @@
 </div>
 
 <!-- Firebase compat CDN -->
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js" defer></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js" defer></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js" defer></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js" defer></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js" integrity="sha384-yuGdyIzzYtOBlBG6JOWn+Ey9kpq7HocusNuxEGyyohr1eEyXpeEyehIIXC/hznw4" crossorigin="anonymous" defer></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js" integrity="sha384-nwX2Qpkhc2sv6L0ZPkLefLGguao67toSowvePuQvGF6cG+8MUphGI2uI94Ls3JF7" crossorigin="anonymous" defer></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js" integrity="sha384-lI+CxEx/bCvWP1b0OK13j5HTrTZP7yf1xle8TVOFq2smz6KC1RChTarRV/RHP5PP" crossorigin="anonymous" defer></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-storage-compat.js" integrity="sha384-oze9siCpFoiDBZ37lLp99ZmOMO+je1s/xtvwtbNv3NXQXLpbpfPSzZSpbT3xV9da" crossorigin="anonymous" defer></script>
 <script src="js/firebase-config.js" defer></script>
 <script src="js/main.js" defer></script>
 <script src="js/product-modal.js" defer></script>
@@ -563,23 +563,16 @@
 </script>
 
 <script>
-/* ── Task 6: Restore order form after successful submission ───────────
-   showSuccessScreen() in main.js replaces #modal-card innerHTML.
-   On next modal open the form would be missing. This observer restores
-   the original HTML and rebinds all event listeners before the user
-   sees the modal again. ──────────────────────────────────────────── */
 (function () {
   'use strict';
   var modal = document.getElementById('order-modal');
   var card  = document.getElementById('modal-card');
   if (!modal || !card) return;
-  var originalHTML = card.innerHTML; // static HTML, captured before main.js runs
+  var originalHTML = card.innerHTML;
 
   new MutationObserver(function () {
-    // Modal just became OPEN and form was replaced by success screen
     if (modal.classList.contains('open') && !card.querySelector('#order-form')) {
       card.innerHTML = originalHTML;
-      // Rebind listeners (functions are global declarations in main.js)
       var fCity = document.getElementById('f-city');
       if (fCity && typeof onCityChange === 'function')
         fCity.addEventListener('change', onCityChange);
@@ -595,17 +588,12 @@
       var form = document.getElementById('order-form');
       if (form && typeof submitOrder === 'function')
         form.addEventListener('submit', submitOrder);
-      // Reset GPS cached state so fresh detection can happen
       try { detectedLocation = null; } catch (e) {}
-      // Re-apply date min/max
       if (typeof setDateLimits === 'function') setDateLimits();
     }
   }).observe(modal, { attributes: true, attributeFilter: ['class'] });
 })();
 
-/* ── Task 7: Dynamic delivery fees in About section ─────────────────
-   Reads the delivery_fees Firestore doc (same source as the order form)
-   and updates the About text so it never goes stale. ─────────────── */
 document.addEventListener('DOMContentLoaded', function () {
   var el = document.getElementById('about-delivery-fee');
   if (!el || typeof db === 'undefined') return;
@@ -621,7 +609,7 @@ document.addEventListener('DOMContentLoaded', function () {
       el.textContent = 'Delivery: Amman JOD ' + amman + ' · All Jordan JOD ' + maxOther.toFixed(2);
     else if (amman !== null)
       el.textContent = 'Delivery: Amman JOD ' + amman;
-  }).catch(function () {}); // silent fail — static fallback text remains
+  }).catch(function () {});
 });
 </script>
 </body>
