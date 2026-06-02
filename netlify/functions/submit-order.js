@@ -27,7 +27,7 @@ const ALLOWED_ORIGINS = new Set([
   'http://localhost:3000',
   ...(process.env.ALLOWED_ORIGINS || '').split(',').map(o => o.trim()).filter(Boolean),
 ]);
-const CITIES = ['Amman','Salt','Zarqa','Jerash','Irbid','Madaba','Balqaa'];
+const CITIES = ['Amman','Zarqa','Irbid','Balqa','Madaba','Karak','Aqaba','Mafraq','Jerash','Ajloun','Tafilah','Maan'];
 const NAME_RE  = /^[؀-ۿa-zA-Z\s'\-]{2,80}$/;
 const PHONE_RE = /^(07[789]\d{7}|(\+9627[789]\d{7}))$/;
 

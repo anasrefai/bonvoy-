@@ -48,6 +48,7 @@ async function adminAction(action, payload = {}) {
     payload.extrasGroupId  = (sourceOwn || !payload.hasExtras)
       ? null
       : (document.getElementById('p-extras-group-id')?.value || null);
+    payload.hasMultipleGroups = document.getElementById('p-has-multi-groups')?.checked || false;
   }
   const res = await fetch('/.netlify/functions/admin-action', {
     method:  'POST',
@@ -476,6 +477,19 @@ function openProductModal(product, id) {
     document.getElementById('extras-items-list').innerHTML = '';
     document.getElementById('extras-count').textContent = 'Extras (0/25)';
     document.getElementById('add-extra-form').style.display = 'none';
+  }
+
+  // Multi-groups
+  const hasMultipleGroups = product?.hasMultipleGroups || false;
+  document.getElementById('p-has-multi-groups').checked          = hasMultipleGroups;
+  document.getElementById('multi-groups-config').style.display   = hasMultipleGroups ? 'block' : 'none';
+  if (id && hasMultipleGroups) {
+    loadProductMultiGroups(id);
+  } else {
+    const mgList  = document.getElementById('mg-groups-list');
+    const mgCount = document.getElementById('mg-group-count');
+    if (mgList)  mgList.innerHTML = '';
+    if (mgCount) mgCount.textContent = 'Groups (0)';
   }
 }
 
@@ -1067,3 +1081,293 @@ document.getElementById('save-new-group').addEventListener('click', async () => 
   } catch (err) { showToast('Error: ' + err.message, 'error'); }
   btn.disabled = false; btn.textContent = 'Save';
 });
+
+/* ═══════════════════════════════════════════════════════════════
+   PRODUCT MULTI-GROUPS  (products/{id}/extraGroups subcollection)
+   ═══════════════════════════════════════════════════════════════ */
+
+document.getElementById('p-has-multi-groups').addEventListener('change', function () {
+  document.getElementById('multi-groups-config').style.display = this.checked ? 'block' : 'none';
+  const productId = document.getElementById('edit-product-id').value;
+  if (this.checked && productId) loadProductMultiGroups(productId);
+});
+
+document.getElementById('btn-add-mg-group').addEventListener('click', function () {
+  const form = document.getElementById('add-mg-group-form');
+  form.style.display = form.style.display === 'none' ? 'flex' : 'none';
+  if (form.style.display === 'flex') document.getElementById('new-mg-label').focus();
+});
+
+document.getElementById('cancel-new-mg-group').addEventListener('click', function () {
+  document.getElementById('add-mg-group-form').style.display = 'none';
+});
+
+document.getElementById('save-new-mg-group').addEventListener('click', saveMgGroup);
+
+async function loadProductMultiGroups(productId) {
+  const listEl  = document.getElementById('mg-groups-list');
+  const countEl = document.getElementById('mg-group-count');
+  if (!listEl) return;
+  listEl.innerHTML = '<p style="font-size:0.82rem;opacity:0.5;padding:8px 0">Loading…</p>';
+  try {
+    const { groups } = await adminAction('getProductExtraGroups', { productId });
+    if (countEl) countEl.textContent = `Groups (${groups.length})`;
+    renderMgGroupsList(groups, productId);
+  } catch (err) {
+    listEl.innerHTML = `<p style="font-size:0.82rem;color:#C62828">Failed: ${escHtml(err.message)}</p>`;
+  }
+}
+
+function renderMgGroupsList(groups, productId) {
+  const listEl = document.getElementById('mg-groups-list');
+  if (!listEl) return;
+  if (!groups.length) {
+    listEl.innerHTML = '<p style="font-size:0.82rem;opacity:0.5;padding:8px 0">No groups yet. Add one above.</p>';
+    return;
+  }
+  listEl.innerHTML = groups.map(g => `
+    <div class="mg-group-card" data-gid="${escHtml(g.id)}" data-pid="${escHtml(productId)}">
+      <div class="mg-group-header">
+        <span class="mg-group-chevron">▼</span>
+        <span class="mg-group-label-text">${escHtml(g.label)}</span>
+        <span class="mg-group-badge ${g.required ? 'required' : 'optional'}">${g.required ? 'Required' : 'Optional'}</span>
+        <span class="mg-group-badge optional">${g.multiple ? 'Multiple' : 'Single'}</span>
+        <div class="mg-group-actions">
+          <button type="button" class="mg-move-btn" data-dir="up"   title="Move up">↑</button>
+          <button type="button" class="mg-move-btn" data-dir="down" title="Move down">↓</button>
+          <button type="button" class="apc-btn apc-btn-edit  mg-rename-btn"
+            data-gid="${escHtml(g.id)}" data-glabel="${escHtml(g.label)}"
+            data-greq="${g.required}" data-gmult="${g.multiple}"
+            style="padding:3px 9px;font-size:0.72rem">Edit</button>
+          <button type="button" class="apc-btn apc-btn-delete mg-delete-btn"
+            data-gid="${escHtml(g.id)}" data-glabel="${escHtml(g.label)}">Delete</button>
+        </div>
+      </div>
+      <div class="mg-group-body">
+        <div class="extras-panel-header" style="margin-top:10px">
+          <span class="extras-panel-count" id="mgopt-${escHtml(g.id)}-count">Options (0)</span>
+          <button type="button" class="btn-add-extra" id="mgopt-${escHtml(g.id)}-addbtn">+ Add Option</button>
+        </div>
+        <div class="extras-items-list" id="mgopt-${escHtml(g.id)}-list"></div>
+        <div class="add-extra-form" id="mgopt-${escHtml(g.id)}-form" style="display:none">
+          <input type="text"   class="mg-opt-name"  placeholder="Option name" maxlength="80">
+          <input type="number" class="mg-opt-price" placeholder="Price (0=free)" min="0" max="100" step="0.01" value="0">
+          <div class="extras-toggle-row">
+            <label class="toggle-switch" style="margin:0">
+              <input type="checkbox" class="mg-opt-avail" checked>
+              <span class="toggle-slider"></span>
+            </label>
+            <span>Available</span>
+          </div>
+          <div class="add-extra-form-actions">
+            <button type="button" class="btn-save   mg-opt-save-btn"   style="font-size:0.82rem;padding:8px 18px">Save Option</button>
+            <button type="button" class="btn-cancel mg-opt-cancel-btn" style="font-size:0.82rem;padding:8px 14px">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `).join('');
+
+  // Expand/collapse on header click
+  listEl.querySelectorAll('.mg-group-header').forEach(header => {
+    header.addEventListener('click', e => {
+      if (e.target.closest('button')) return;
+      const card = header.closest('.mg-group-card');
+      const isOpen = card.classList.toggle('open');
+      if (isOpen) loadMgGroupOptions(card.dataset.pid, card.dataset.gid);
+    });
+  });
+
+  // Up/down reorder
+  listEl.querySelectorAll('.mg-move-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const card  = btn.closest('.mg-group-card');
+      const cards = [...listEl.querySelectorAll('.mg-group-card')];
+      const idx   = cards.indexOf(card);
+      if (btn.dataset.dir === 'up'   && idx > 0)              listEl.insertBefore(card, cards[idx - 1]);
+      else if (btn.dataset.dir === 'down' && idx < cards.length - 1) listEl.insertBefore(cards[idx + 1], card);
+      else return;
+      const ids = [...listEl.querySelectorAll('.mg-group-card')].map(c => c.dataset.gid);
+      adminAction('reorderProductExtraGroups', { productId, ids }).catch(err => {
+        showToast('Reorder failed: ' + err.message, 'error');
+      });
+    });
+  });
+
+  // Edit (rename + settings)
+  listEl.querySelectorAll('.mg-rename-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const newLabel = prompt('Group label:', btn.dataset.glabel);
+      if (newLabel === null || !newLabel.trim()) return;
+      const newReq  = confirm('Required? (OK = yes, Cancel = no)');
+      const newMult = confirm('Allow multiple selections? (OK = yes, Cancel = no)');
+      try {
+        await adminAction('editProductExtraGroup', {
+          productId, groupId: btn.dataset.gid,
+          label: newLabel.trim(), required: newReq, multiple: newMult,
+        });
+        showToast('Group updated', 'success');
+        loadProductMultiGroups(productId);
+      } catch (err) { showToast('Error: ' + err.message, 'error'); }
+    });
+  });
+
+  // Delete group
+  listEl.querySelectorAll('.mg-delete-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm(`Delete group "${btn.dataset.glabel}" and all its options?`)) return;
+      try {
+        await adminAction('deleteProductExtraGroup', { productId, groupId: btn.dataset.gid });
+        showToast('Group deleted', 'success');
+        loadProductMultiGroups(productId);
+      } catch (err) { showToast('Error: ' + err.message, 'error'); }
+    });
+  });
+
+  // Add-option toggle and save per card
+  listEl.querySelectorAll('.mg-group-card').forEach(card => {
+    const gid    = card.dataset.gid;
+    const pid    = card.dataset.pid;
+    const addBtn = card.querySelector(`#mgopt-${gid}-addbtn`);
+    const form   = card.querySelector(`#mgopt-${gid}-form`);
+    if (addBtn && form) {
+      addBtn.addEventListener('click', () => {
+        form.style.display = form.style.display === 'none' ? 'flex' : 'none';
+        if (form.style.display === 'flex') form.querySelector('.mg-opt-name')?.focus();
+      });
+      form.querySelector('.mg-opt-cancel-btn')?.addEventListener('click', () => {
+        form.style.display = 'none';
+      });
+      form.querySelector('.mg-opt-save-btn')?.addEventListener('click', () => saveMgOption(pid, gid, card));
+    }
+  });
+}
+
+async function saveMgGroup() {
+  const productId = document.getElementById('edit-product-id').value;
+  if (!productId) { showToast('Save the product first before adding groups', 'error'); return; }
+  const label    = document.getElementById('new-mg-label').value.trim();
+  const required = document.getElementById('new-mg-required').checked;
+  const multiple = document.getElementById('new-mg-multiple').checked;
+  if (!label) { showToast('Group label is required', 'error'); return; }
+  const btn = document.getElementById('save-new-mg-group');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner spinner-dark"></span>';
+  try {
+    await adminAction('addProductExtraGroup', { productId, label, required, multiple });
+    showToast('Group added', 'success');
+    document.getElementById('new-mg-label').value    = '';
+    document.getElementById('new-mg-required').checked = true;
+    document.getElementById('new-mg-multiple').checked = false;
+    document.getElementById('add-mg-group-form').style.display = 'none';
+    loadProductMultiGroups(productId);
+  } catch (err) { showToast('Error: ' + err.message, 'error'); }
+  btn.disabled = false; btn.textContent = 'Save Group';
+}
+
+async function loadMgGroupOptions(productId, groupId) {
+  const listEl  = document.getElementById(`mgopt-${groupId}-list`);
+  const countEl = document.getElementById(`mgopt-${groupId}-count`);
+  if (!listEl) return;
+  listEl.innerHTML = '<p style="font-size:0.82rem;opacity:0.5;padding:4px 0">Loading…</p>';
+  try {
+    const { options } = await adminAction('getGroupOptions', { productId, groupId });
+    if (countEl) countEl.textContent = `Options (${options.length})`;
+    renderMgGroupOptions(options, productId, groupId, listEl);
+  } catch (err) {
+    listEl.innerHTML = `<p style="font-size:0.82rem;color:#C62828">Failed: ${escHtml(err.message)}</p>`;
+  }
+}
+
+function renderMgGroupOptions(options, productId, groupId, listEl) {
+  if (!options.length) {
+    listEl.innerHTML = '<p style="font-size:0.82rem;opacity:0.5;padding:4px 0">No options yet.</p>';
+    return;
+  }
+  listEl.innerHTML = options.map((opt, idx) => `
+    <div class="extra-item-row" data-oid="${escHtml(opt.id)}" data-idx="${idx}" draggable="true">
+      <span class="extra-drag-handle" title="Drag to reorder">⠿</span>
+      <div class="extra-info">
+        <div class="extra-name">${escHtml(opt.name)}</div>
+        <div class="extra-price">${opt.price === 0 ? 'Free' : 'JOD ' + Number(opt.price).toFixed(2)}</div>
+      </div>
+      <div class="extra-item-actions">
+        <label class="toggle-switch extra-avail-toggle">
+          <input type="checkbox" class="mg-opt-avail-chk" data-oid="${escHtml(opt.id)}" ${opt.available ? 'checked' : ''}>
+          <span class="toggle-slider"></span>
+        </label>
+        <button class="btn-delete-extra mg-delete-opt-btn"
+          data-oid="${escHtml(opt.id)}" data-oname="${escHtml(opt.name)}">×</button>
+      </div>
+    </div>
+  `).join('');
+
+  listEl.querySelectorAll('.mg-opt-avail-chk').forEach(chk => {
+    chk.addEventListener('change', async () => {
+      try {
+        await adminAction('editGroupOption', { productId, groupId, optionId: chk.dataset.oid, available: chk.checked });
+        showToast(chk.checked ? 'Option shown' : 'Option hidden', 'success');
+      } catch (err) {
+        chk.checked = !chk.checked;
+        showToast('Error: ' + err.message, 'error');
+      }
+    });
+  });
+
+  listEl.querySelectorAll('.mg-delete-opt-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm(`Delete option "${btn.dataset.oname}"?`)) return;
+      try {
+        await adminAction('deleteGroupOption', { productId, groupId, optionId: btn.dataset.oid });
+        showToast('Option deleted', 'success');
+        loadMgGroupOptions(productId, groupId);
+      } catch (err) { showToast('Error: ' + err.message, 'error'); }
+    });
+  });
+
+  // Drag-to-reorder options
+  let dragSrc = null;
+  listEl.querySelectorAll('.extra-item-row').forEach(row => {
+    row.addEventListener('dragstart', e => { dragSrc = row; e.dataTransfer.effectAllowed = 'move'; });
+    row.addEventListener('dragover',  e => { e.preventDefault(); row.classList.add('drag-over'); });
+    row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+    row.addEventListener('drop', async e => {
+      e.preventDefault(); row.classList.remove('drag-over');
+      if (dragSrc === row) return;
+      const rows = [...listEl.querySelectorAll('.extra-item-row')];
+      const from = rows.indexOf(dragSrc);
+      const to   = rows.indexOf(row);
+      if (from < 0 || to < 0) return;
+      if (from < to) listEl.insertBefore(dragSrc, row.nextSibling);
+      else           listEl.insertBefore(dragSrc, row);
+      const ids = [...listEl.querySelectorAll('.extra-item-row')].map(r => r.dataset.oid);
+      try {
+        await adminAction('reorderGroupOptions', { productId, groupId, ids });
+      } catch (err) { showToast('Reorder failed: ' + err.message, 'error'); }
+    });
+    row.addEventListener('dragend', () => {
+      listEl.querySelectorAll('.extra-item-row').forEach(r => r.classList.remove('drag-over'));
+    });
+  });
+}
+
+async function saveMgOption(productId, groupId, card) {
+  const nameEl  = card.querySelector('.mg-opt-name');
+  const priceEl = card.querySelector('.mg-opt-price');
+  const availEl = card.querySelector('.mg-opt-avail');
+  const saveBtn = card.querySelector('.mg-opt-save-btn');
+  const name    = nameEl?.value.trim();
+  if (!name) { showToast('Option name is required', 'error'); return; }
+  const price     = parseFloat(priceEl?.value) || 0;
+  const available = availEl?.checked !== false;
+  saveBtn.disabled = true; saveBtn.innerHTML = '<span class="spinner spinner-dark"></span>';
+  try {
+    await adminAction('addGroupOption', { productId, groupId, name, price, imageUrl: '', available });
+    showToast('Option added', 'success');
+    if (nameEl)  nameEl.value  = '';
+    if (priceEl) priceEl.value = '0';
+    const form = card.querySelector(`#mgopt-${groupId}-form`);
+    if (form) form.style.display = 'none';
+    loadMgGroupOptions(productId, groupId);
+  } catch (err) { showToast('Error: ' + err.message, 'error'); }
+  saveBtn.disabled = false; saveBtn.textContent = 'Save Option';
+}

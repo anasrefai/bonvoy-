@@ -15,7 +15,7 @@ function getAdmin() {
   return admin.firestore();
 }
 
-const VALID_CATEGORIES = ['all','Brownies','Cakes','Cookies','Specials'];
+const VALID_CATEGORIES = ['all','Brownies','Cakes','Cookies','Specials','Cookie Box','Cookie Pan'];
 const rateLimitMap = new Map();
 const RATE_MAX = 120;
 const RATE_WINDOW = 60 * 1000; // 1 minute

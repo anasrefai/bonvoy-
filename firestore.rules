@@ -9,6 +9,14 @@ service cloud.firestore {
         allow read: if true;
         allow write: if false;
       }
+      match /extraGroups/{groupId} {
+        allow read: if true;
+        allow write: if false;
+        match /options/{optionId} {
+          allow read: if true;
+          allow write: if false;
+        }
+      }
     }
 
     match /extraGroups/{groupId} {

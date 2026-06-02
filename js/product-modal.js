@@ -137,15 +137,19 @@ function _flyAnimation(srcEl, imageUrl) {
 }
 
 /* ─── Modal state ───────────────────────────────────────────── */
-var _pmProduct  = null;
-var _pmExtras   = [];
-var _pmSelected = [];
+var _pmProduct        = null;
+var _pmExtras         = [];
+var _pmSelected       = [];
+var _pmGroups         = [];       // multi-group mode
+var _pmGroupSelections = {};      // groupId → [option, ...]
 
 /* ─── Open / close modal ────────────────────────────────────── */
 function _openPM(product) {
-  _pmProduct  = product;
-  _pmExtras   = [];
-  _pmSelected = [];
+  _pmProduct         = product;
+  _pmExtras          = [];
+  _pmSelected        = [];
+  _pmGroups          = [];
+  _pmGroupSelections = {};
 
   document.getElementById('pm-img').src      = product.imageUrl || '';
   document.getElementById('pm-img').alt      = product.name     || '';
@@ -157,19 +161,30 @@ function _openPM(product) {
   var extrasSection = document.getElementById('pm-extras-section');
   var addBtn        = document.getElementById('pm-add-btn');
   var hint          = document.getElementById('pm-required-hint');
+  var extrasList    = document.getElementById('pm-extras-list');
 
-  if (product.hasExtras) {
+  // Always reset the multi class so single-group layout is unaffected
+  extrasList.classList.remove('multi');
+
+  if (product.hasMultipleGroups) {
+    extrasSection.style.display = 'block';
+    extrasList.classList.add('multi');
+    document.getElementById('pm-extras-label-text').textContent = '';
+    extrasList.innerHTML = '<div class="pm-spinner">Loading options…</div>';
+    addBtn.disabled    = true;
+    hint.style.display = 'none';
+    _loadMultiGroups(product);
+  } else if (product.hasExtras) {
     extrasSection.style.display = 'block';
     document.getElementById('pm-extras-label-text').textContent =
       product.extrasLabel || 'Customize your order';
-    document.getElementById('pm-extras-list').innerHTML =
-      '<div class="pm-spinner">Loading options…</div>';
-    addBtn.disabled = !!product.extrasRequired;
+    extrasList.innerHTML = '<div class="pm-spinner">Loading options…</div>';
+    addBtn.disabled    = !!product.extrasRequired;
     hint.style.display = product.extrasRequired ? 'block' : 'none';
     _loadExtras(product);
   } else {
     extrasSection.style.display = 'none';
-    addBtn.disabled = false;
+    addBtn.disabled    = false;
     hint.style.display = 'none';
   }
 
@@ -258,12 +273,139 @@ function _onExtrasChange(product) {
     'JOD ' + ((_pmProduct ? _pmProduct.price : 0) + extrasTotal).toFixed(2);
 }
 
+/* ─── Multi-group load + render ─────────────────────────────── */
+function _loadMultiGroups(product) {
+  db.collection('products').doc(product.id).collection('extraGroups')
+    .orderBy('order', 'asc')
+    .get()
+    .then(function (groupsSnap) {
+      var groups = groupsSnap.docs.map(function (d) { return Object.assign({ id: d.id }, d.data()); });
+      var promises = groups.map(function (g) {
+        return db.collection('products').doc(product.id)
+          .collection('extraGroups').doc(g.id).collection('options')
+          .where('available', '==', true)
+          .orderBy('order', 'asc')
+          .get()
+          .then(function (snap) {
+            g.options = snap.docs.map(function (d) { return Object.assign({ id: d.id }, d.data()); });
+            return g;
+          });
+      });
+      return Promise.all(promises);
+    })
+    .then(function (groups) {
+      _pmGroups = groups;
+      _pmGroupSelections = {};
+      groups.forEach(function (g) { _pmGroupSelections[g.id] = []; });
+      _renderMultiGroups(product);
+    })
+    .catch(function () {
+      document.getElementById('pm-extras-list').innerHTML =
+        '<div class="pm-spinner">Could not load options.</div>';
+    });
+}
+
+function _renderMultiGroups(product) {
+  var listEl = document.getElementById('pm-extras-list');
+
+  if (!_pmGroups.length) {
+    listEl.innerHTML = '<div class="pm-spinner">No options available.</div>';
+    return;
+  }
+
+  listEl.innerHTML = _pmGroups.map(function (group) {
+    var inputType = group.multiple ? 'checkbox' : 'radio';
+    var iname     = 'pm-mg-' + group.id;
+    var reqBadge  = group.required
+      ? '<span class="pm-group-required-badge">Required</span>'
+      : '';
+    var optHtml = group.options.map(function (opt, oi) {
+      var priceStr   = opt.price === 0 ? 'Free' : '+JOD ' + Number(opt.price).toFixed(2);
+      var priceClass = opt.price === 0 ? 'pm-extra-price-tag free' : 'pm-extra-price-tag';
+      return '<label class="pm-extra-row" data-gid="' + group.id + '" data-oi="' + oi + '">' +
+        '<input class="pm-extra-check" type="' + inputType + '" name="' + iname + '" value="' + oi + '" data-gid="' + group.id + '">' +
+        '<span class="pm-extra-name">' + _esc(opt.name) + '</span>' +
+        '<span class="' + priceClass + '">' + _esc(priceStr) + '</span>' +
+      '</label>';
+    }).join('');
+
+    return '<div class="pm-group-section" data-gid="' + group.id + '">' +
+      '<div class="pm-group-header">' +
+        '<span class="pm-group-label">' + _esc(group.label) + '</span>' + reqBadge +
+      '</div>' +
+      '<div class="pm-group-options">' + optHtml + '</div>' +
+    '</div>';
+  }).join('');
+
+  // Bind inputs
+  listEl.querySelectorAll('.pm-extra-check').forEach(function (inp) {
+    inp.addEventListener('change', function () { _onMultiGroupsChange(product); });
+  });
+  listEl.querySelectorAll('.pm-extra-row').forEach(function (row) {
+    row.addEventListener('click', function (e) {
+      if (e.target.tagName === 'INPUT') return;
+      var inp = row.querySelector('.pm-extra-check');
+      if (!inp) return;
+      inp.checked = inp.type === 'checkbox' ? !inp.checked : true;
+      inp.dispatchEvent(new Event('change'));
+    });
+  });
+
+  _onMultiGroupsChange(product);
+}
+
+function _onMultiGroupsChange(product) {
+  // Rebuild selections per group
+  _pmGroups.forEach(function (group) {
+    _pmGroupSelections[group.id] = [];
+    document.querySelectorAll('.pm-extra-check[data-gid="' + group.id + '"]:checked')
+      .forEach(function (inp) {
+        var oi = parseInt(inp.value, 10);
+        if (!isNaN(oi) && group.options[oi]) _pmGroupSelections[group.id].push(group.options[oi]);
+      });
+  });
+
+  // Highlight selected rows
+  document.querySelectorAll('.pm-group-section').forEach(function (section) {
+    section.querySelectorAll('.pm-extra-row').forEach(function (row) {
+      var inp = row.querySelector('.pm-extra-check');
+      row.classList.toggle('selected', !!(inp && inp.checked));
+    });
+  });
+
+  // Gate Add-to-Cart on every required group having a selection
+  var allSatisfied = _pmGroups.every(function (g) {
+    return !g.required || _pmGroupSelections[g.id].length > 0;
+  });
+  var addBtn = document.getElementById('pm-add-btn');
+  var hint   = document.getElementById('pm-required-hint');
+  addBtn.disabled    = !allSatisfied;
+  hint.style.display = allSatisfied ? 'none' : 'block';
+  if (!allSatisfied) hint.textContent = 'Please make a selection in each required group';
+
+  // Update running price
+  var extrasTotal = 0;
+  Object.values(_pmGroupSelections).forEach(function (opts) {
+    opts.forEach(function (opt) { extrasTotal += opt.price || 0; });
+  });
+  document.getElementById('pm-price').textContent =
+    'JOD ' + ((_pmProduct ? _pmProduct.price : 0) + extrasTotal).toFixed(2);
+}
+
 /* ─── Add to cart from modal ────────────────────────────────── */
 function _pmAddToCart() {
   if (!_pmProduct) return;
-  var extras = _pmSelected.map(function (ex) {
-    return { name: ex.name, price: ex.price || 0 };
-  });
+  var extras;
+  if (_pmProduct.hasMultipleGroups) {
+    extras = [];
+    Object.values(_pmGroupSelections).forEach(function (opts) {
+      opts.forEach(function (opt) { extras.push({ name: opt.name, price: opt.price || 0 }); });
+    });
+  } else {
+    extras = _pmSelected.map(function (ex) {
+      return { name: ex.name, price: ex.price || 0 };
+    });
+  }
   _addToCartWithExtras(_pmProduct, extras);
   _flyAnimation(document.getElementById('pm-img'), _pmProduct.imageUrl);
   _closePM();
@@ -284,7 +426,7 @@ function _bindCards(grid) {
       e.stopImmediatePropagation();
       _fetchProduct(productId, function (product) {
         if (!product) return;
-        if (product.hasExtras) {
+        if (product.hasExtras || product.hasMultipleGroups) {
           _openPM(product);
         } else {
           // No extras: add directly then fly

@@ -651,6 +651,25 @@ p  { font-size: 1rem; }
 .pm-add-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
 .pm-spinner  { text-align: center; padding: 20px 0; opacity: 0.5; font-size: 0.875rem; }
 
+/* ─── Multi-group sections in product modal ─────────────────── */
+.pm-extras-list.multi { max-height: none; }
+.pm-group-section {
+  padding-bottom: 12px; margin-bottom: 4px;
+  border-bottom: 1px solid rgba(61,32,16,0.08);
+}
+.pm-group-section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+.pm-group-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.pm-group-label {
+  font-size: 0.875rem; font-weight: 700; color: var(--color-dark); flex: 1;
+}
+.pm-group-required-badge {
+  font-size: 0.65rem; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.03em; color: var(--color-error);
+  background: rgba(198,40,40,0.1); padding: 2px 8px;
+  border-radius: 999px; flex-shrink: 0;
+}
+.pm-group-options { display: flex; flex-direction: column; gap: 4px; }
+
 /* Extras text line inside cart item */
 .cart-item-extras {
   font-size: 0.75rem; opacity: 0.65;
