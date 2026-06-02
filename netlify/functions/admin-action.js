@@ -22,8 +22,8 @@ function respond(statusCode, body) {
 
 function stripHTML(str) { return String(str).replace(/<[^>]*>/g, '').trim(); }
 
-const CITIES = ['Amman','Salt','Zarqa','Jerash','Irbid','Madaba','Balqaa'];
-const CATEGORIES = ['Brownies','Cakes','Cookies','Specials'];
+const CITIES = ['Amman','Zarqa','Irbid','Balqa','Madaba','Karak','Aqaba','Mafraq','Jerash','Ajloun','Tafilah','Maan'];
+const CATEGORIES = ['Brownies','Cakes','Cookies','Specials','Cookie Box','Cookie Pan'];
 const STATUSES   = ['pending','confirmed','delivered','cancelled'];
 
 /* ─── Auth guard ────────────────────────────────────────────── */
@@ -46,24 +46,26 @@ async function verifyAdmin(event, authInstance) {
 /* ─── Action handlers ───────────────────────────────────────── */
 async function addProduct(db, payload) {
   const { name, category, description, price, imageUrl, available,
-          hasExtras, extrasLabel, extrasRequired, extrasMultiple, extrasGroupId } = payload;
+          hasExtras, extrasLabel, extrasRequired, extrasMultiple, extrasGroupId,
+          hasMultipleGroups } = payload;
   if (!name || !CATEGORIES.includes(category) || typeof price !== 'number') {
     throw { code: 400, message: 'Invalid product data' };
   }
   const doc = await db.collection('products').add({
-    name:           stripHTML(String(name)).substring(0, 80),
+    name:              stripHTML(String(name)).substring(0, 80),
     category,
-    description:    stripHTML(String(description || '')).substring(0, 300),
-    price:          parseFloat(Math.max(0.01, Math.min(999.99, price)).toFixed(3)),
-    imageUrl:       String(imageUrl || ''),
-    available:      available !== false,
-    hasExtras:      hasExtras === true,
-    extrasLabel:    stripHTML(String(extrasLabel || '')).substring(0, 80),
-    extrasRequired: extrasRequired === true,
-    extrasMultiple: extrasMultiple === true,
-    extrasGroupId:  extrasGroupId ? String(extrasGroupId) : null,
-    createdAt:      FieldValue.serverTimestamp(),
-    updatedAt:      FieldValue.serverTimestamp(),
+    description:       stripHTML(String(description || '')).substring(0, 300),
+    price:             parseFloat(Math.max(0.01, Math.min(999.99, price)).toFixed(3)),
+    imageUrl:          String(imageUrl || ''),
+    available:         available !== false,
+    hasExtras:         hasExtras === true,
+    extrasLabel:       stripHTML(String(extrasLabel || '')).substring(0, 80),
+    extrasRequired:    extrasRequired === true,
+    extrasMultiple:    extrasMultiple === true,
+    extrasGroupId:     extrasGroupId ? String(extrasGroupId) : null,
+    hasMultipleGroups: hasMultipleGroups === true,
+    createdAt:         FieldValue.serverTimestamp(),
+    updatedAt:         FieldValue.serverTimestamp(),
   });
   return { id: doc.id };
 }
@@ -82,7 +84,8 @@ async function editProduct(db, payload) {
   if (updates.extrasLabel    !== undefined) allowed.extrasLabel    = stripHTML(String(updates.extrasLabel)).substring(0, 80);
   if (updates.extrasRequired !== undefined) allowed.extrasRequired = Boolean(updates.extrasRequired);
   if (updates.extrasMultiple !== undefined) allowed.extrasMultiple = Boolean(updates.extrasMultiple);
-  if (updates.extrasGroupId  !== undefined) allowed.extrasGroupId  = updates.extrasGroupId ? String(updates.extrasGroupId) : null;
+  if (updates.extrasGroupId      !== undefined) allowed.extrasGroupId      = updates.extrasGroupId ? String(updates.extrasGroupId) : null;
+  if (updates.hasMultipleGroups  !== undefined) allowed.hasMultipleGroups  = Boolean(updates.hasMultipleGroups);
   allowed.updatedAt = FieldValue.serverTimestamp();
   await db.collection('products').doc(id).update(allowed);
   return { id };
@@ -154,10 +157,12 @@ async function getOrders(db, payload) {
   if (status && STATUSES.includes(status)) query = query.where('status', '==', status);
   if (city   && CITIES.includes(city))     query = query.where('city', '==', city);
 
-  // NOTE: Combining deliveryDate filter with status/city filter may
-  // require a composite Firestore index. Deploy indexes if queries fail.
-  if (dateFrom) query = query.where('deliveryDate', '>=', dateFrom);
-  if (dateTo)   query = query.where('deliveryDate', '<=', dateTo);
+  // createdAt is a Firestore Timestamp; convert YYYY-MM-DD strings to
+  // Date objects spanning the full day. Inequality on the orderBy field
+  // (createdAt) is allowed without extra composite indexes, but combining
+  // with equality filters (status, city) uses the existing composite indexes.
+  if (dateFrom) query = query.where('createdAt', '>=', new Date(dateFrom + 'T00:00:00'));
+  if (dateTo)   query = query.where('createdAt', '<=', new Date(dateTo   + 'T23:59:59.999'));
 
   if (startAfter) {
     const cursor = await db.collection('orders').doc(startAfter).get();
@@ -289,6 +294,124 @@ async function deleteExtraGroup(db, payload) {
   return { id };
 }
 
+/* ─── Product extra-groups helpers ─────────────────────────── */
+function productGroupsRef(db, productId) {
+  if (!productId) throw { code: 400, message: 'productId required' };
+  return db.collection('products').doc(productId).collection('extraGroups');
+}
+function groupOptionsRef(db, productId, groupId) {
+  if (!productId || !groupId) throw { code: 400, message: 'productId and groupId required' };
+  return db.collection('products').doc(productId).collection('extraGroups').doc(groupId).collection('options');
+}
+
+async function getProductExtraGroups(db, payload) {
+  const { productId } = payload;
+  const snap = await productGroupsRef(db, productId).orderBy('order', 'asc').get();
+  return { groups: snap.docs.map(d => ({ id: d.id, ...d.data() })) };
+}
+
+async function addProductExtraGroup(db, payload) {
+  const { productId, label, required, multiple } = payload;
+  if (!label) throw { code: 400, message: 'Group label required' };
+  const ref  = productGroupsRef(db, productId);
+  const snap = await ref.orderBy('order', 'desc').limit(1).get();
+  const nextOrder = snap.empty ? 0 : (snap.docs[0].data().order || 0) + 1;
+  const doc = await ref.add({
+    label:     stripHTML(String(label)).substring(0, 80),
+    required:  required === true,
+    multiple:  multiple === true,
+    order:     nextOrder,
+    createdAt: FieldValue.serverTimestamp(),
+  });
+  return { id: doc.id };
+}
+
+async function editProductExtraGroup(db, payload) {
+  const { productId, groupId, ...updates } = payload;
+  if (!groupId) throw { code: 400, message: 'groupId required' };
+  const allowed = {};
+  if (updates.label    !== undefined) allowed.label    = stripHTML(String(updates.label)).substring(0, 80);
+  if (updates.required !== undefined) allowed.required = Boolean(updates.required);
+  if (updates.multiple !== undefined) allowed.multiple = Boolean(updates.multiple);
+  if (updates.order    !== undefined) allowed.order    = parseInt(updates.order, 10);
+  await productGroupsRef(db, productId).doc(groupId).update(allowed);
+  return { id: groupId };
+}
+
+async function deleteProductExtraGroup(db, payload) {
+  const { productId, groupId } = payload;
+  if (!groupId) throw { code: 400, message: 'groupId required' };
+  const optSnap = await groupOptionsRef(db, productId, groupId).get();
+  const batch = db.batch();
+  optSnap.docs.forEach(d => batch.delete(d.ref));
+  batch.delete(productGroupsRef(db, productId).doc(groupId));
+  await batch.commit();
+  return { id: groupId };
+}
+
+async function reorderProductExtraGroups(db, payload) {
+  const { productId, ids } = payload;
+  if (!Array.isArray(ids)) throw { code: 400, message: 'ids array required' };
+  const ref   = productGroupsRef(db, productId);
+  const batch = db.batch();
+  ids.forEach((id, i) => batch.update(ref.doc(id), { order: i }));
+  await batch.commit();
+  return { updated: ids.length };
+}
+
+async function getGroupOptions(db, payload) {
+  const { productId, groupId } = payload;
+  const snap = await groupOptionsRef(db, productId, groupId).orderBy('order', 'asc').get();
+  return { options: snap.docs.map(d => ({ id: d.id, ...d.data() })) };
+}
+
+async function addGroupOption(db, payload) {
+  const { productId, groupId, name, price, imageUrl, available } = payload;
+  if (!name) throw { code: 400, message: 'Option name required' };
+  const ref  = groupOptionsRef(db, productId, groupId);
+  const snap = await ref.orderBy('order', 'desc').limit(1).get();
+  const nextOrder = snap.empty ? 0 : (snap.docs[0].data().order || 0) + 1;
+  const doc = await ref.add({
+    name:      stripHTML(String(name)).substring(0, 80),
+    price:     parseFloat(Math.max(0, Math.min(100, parseFloat(price) || 0)).toFixed(3)),
+    imageUrl:  String(imageUrl || ''),
+    available: available !== false,
+    order:     nextOrder,
+    createdAt: FieldValue.serverTimestamp(),
+  });
+  return { id: doc.id };
+}
+
+async function editGroupOption(db, payload) {
+  const { productId, groupId, optionId, ...updates } = payload;
+  if (!optionId) throw { code: 400, message: 'optionId required' };
+  const allowed = {};
+  if (updates.name      !== undefined) allowed.name      = stripHTML(String(updates.name)).substring(0, 80);
+  if (updates.price     !== undefined) allowed.price     = parseFloat(Math.max(0, Math.min(100, parseFloat(updates.price) || 0)).toFixed(3));
+  if (updates.imageUrl  !== undefined) allowed.imageUrl  = String(updates.imageUrl);
+  if (updates.available !== undefined) allowed.available = Boolean(updates.available);
+  if (updates.order     !== undefined) allowed.order     = parseInt(updates.order, 10);
+  await groupOptionsRef(db, productId, groupId).doc(optionId).update(allowed);
+  return { id: optionId };
+}
+
+async function deleteGroupOption(db, payload) {
+  const { productId, groupId, optionId } = payload;
+  if (!optionId) throw { code: 400, message: 'optionId required' };
+  await groupOptionsRef(db, productId, groupId).doc(optionId).delete();
+  return { id: optionId };
+}
+
+async function reorderGroupOptions(db, payload) {
+  const { productId, groupId, ids } = payload;
+  if (!Array.isArray(ids)) throw { code: 400, message: 'ids array required' };
+  const ref   = groupOptionsRef(db, productId, groupId);
+  const batch = db.batch();
+  ids.forEach((id, i) => batch.update(ref.doc(id), { order: i }));
+  await batch.commit();
+  return { updated: ids.length };
+}
+
 /* ─── Stats ─────────────────────────────────────────────────── */
 async function getStats(db) {
   try {
@@ -350,11 +473,21 @@ exports.handler = async (event) => {
       case 'editExtra':         result = await editExtra(db, payload); break;
       case 'deleteExtra':       result = await deleteExtra(db, payload); break;
       case 'reorderExtras':     result = await reorderExtras(db, payload); break;
-      case 'getExtraGroups':    result = await getExtraGroups(db); break;
-      case 'addExtraGroup':     result = await addExtraGroup(db, payload); break;
-      case 'editExtraGroup':    result = await editExtraGroup(db, payload); break;
-      case 'deleteExtraGroup':  result = await deleteExtraGroup(db, payload); break;
-      case 'getStats':          result = await getStats(db); break;
+      case 'getExtraGroups':             result = await getExtraGroups(db); break;
+      case 'addExtraGroup':              result = await addExtraGroup(db, payload); break;
+      case 'editExtraGroup':             result = await editExtraGroup(db, payload); break;
+      case 'deleteExtraGroup':           result = await deleteExtraGroup(db, payload); break;
+      case 'getProductExtraGroups':      result = await getProductExtraGroups(db, payload); break;
+      case 'addProductExtraGroup':       result = await addProductExtraGroup(db, payload); break;
+      case 'editProductExtraGroup':      result = await editProductExtraGroup(db, payload); break;
+      case 'deleteProductExtraGroup':    result = await deleteProductExtraGroup(db, payload); break;
+      case 'reorderProductExtraGroups':  result = await reorderProductExtraGroups(db, payload); break;
+      case 'getGroupOptions':            result = await getGroupOptions(db, payload); break;
+      case 'addGroupOption':             result = await addGroupOption(db, payload); break;
+      case 'editGroupOption':            result = await editGroupOption(db, payload); break;
+      case 'deleteGroupOption':          result = await deleteGroupOption(db, payload); break;
+      case 'reorderGroupOptions':        result = await reorderGroupOptions(db, payload); break;
+      case 'getStats':                   result = await getStats(db); break;
       default: return respond(400, { error: 'Unknown action' });
     }
     return respond(200, { ok: true, data: result });
